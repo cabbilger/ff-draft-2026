@@ -111,6 +111,8 @@
   .mock-controls.espn button { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#eafbe4; }
   .mock-controls.espn button:hover { background:rgba(255,255,255,.18); }
   .mock-controls.espn button.mock-exit { background:#dc2626; border-color:#dc2626; color:#fff; }
+  .mock-controls.espn button:disabled { opacity:.4; cursor:not-allowed; background:rgba(255,255,255,.08); }
+  .mock-controls.espn button:disabled:hover { background:rgba(255,255,255,.08); }
 
   .mock-strip { display:flex; gap:6px; overflow-x:auto; padding:2px 2px 8px; margin-bottom:12px; }
   .mock-strip .pill { flex:0 0 auto; min-width:96px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); border-radius:8px; padding:7px 9px; text-align:center; position:relative; }
@@ -133,10 +135,27 @@
   .mock-stage .stage-price { font-size:24px; font-weight:800; color:#e8a33d; }
   .mock-stage .stage-winner { font-size:11.5px; opacity:.75; margin-top:2px; }
   .mock-stage .stage-placeholder { opacity:.6; font-size:13px; padding:6px 2px; }
+  .mock-stage-main.live .stage-price { color:#7fd858; }
+  .live-tag { display:inline-block; font-size:9px; font-weight:800; letter-spacing:.05em; padding:1px 6px; border-radius:4px; background:#dc2626; color:#fff; vertical-align:middle; margin-left:6px; animation: mock-pulse 1.4s infinite; }
   .mock-trail { display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.09); }
   .mock-trail .step { font-size:10.5px; padding:3px 8px; border-radius:6px; background:rgba(255,255,255,.07); white-space:nowrap; }
   .mock-trail .step b { color:#e8a33d; }
   .mock-progress { font-size:11px; opacity:.65; margin-top:10px; text-align:right; }
+
+  /* ---- live bid box: the user's decision point during an interactive auction ---- */
+  .mock-bidbox { margin-top:10px; background:rgba(127,216,88,.07); border:1px solid rgba(127,216,88,.3); border-radius:10px; padding:12px 14px; }
+  .bidbox-row { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .bidbox-status { font-size:13px; font-weight:600; color:#eafbe4; }
+  .bidbox-status.good { color:#7fd858; }
+  .bidbox-status.dim { color:rgba(255,255,255,.55); font-weight:500; }
+  .bidbox-status.your-turn { color:#e8a33d; font-size:13.5px; }
+  .bidbox-price { color:#e8a33d; font-weight:800; }
+  .bidbox-actions { display:flex; gap:8px; align-items:center; }
+  .mock-bid-input { width:64px; padding:6px 7px; border-radius:6px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08); color:#eafbe4; font-size:13px; font-family:inherit; }
+  .mock-bid-btn, .mock-lockin-btn { background:#2a5c1c; border:1px solid #4a8f2c; color:#eafbe4; border-radius:var(--radius-sm); padding:7px 13px; cursor:pointer; font-size:12.5px; font-weight:700; }
+  .mock-bid-btn:hover, .mock-lockin-btn:hover { background:#356e24; }
+  .mock-pass-btn { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); color:#eafbe4; border-radius:var(--radius-sm); padding:7px 13px; cursor:pointer; font-size:12.5px; font-weight:600; }
+  .mock-pass-btn:hover { background:rgba(255,255,255,.18); }
 
   /* ---- ESPN 3-column room body: roster rail / board+budgets / picks ticker ---- */
   .mock-room-body { display:grid; grid-template-columns:200px 1fr 250px; gap:12px; margin-top:14px; align-items:start; }
@@ -347,7 +366,7 @@
     <div>
       <b>🎮 MOCK DRAFT IN PROGRESS</b> — rehearsal only, nothing here touches your real draft.
     </div>
-    <div class="hint" style="margin-top:6px; font-size:11.5px;">All 10 teams auto-play — jump in any time via the Bid Assistant below.</div>
+    <div class="hint" style="margin-top:6px; font-size:11.5px;">Nominate your own picks and bid live against the AI — use Simulate Next 5 / Rest of Draft to fast-forward stretches you don't want to referee.</div>
 
     <div class="mock-room">
       <div class="mock-room-top">
@@ -371,6 +390,7 @@
 
         <div>
           <div class="mock-stage" id="mockStage"></div>
+          <div class="mock-bidbox" id="mockBidbox" style="display:none;"></div>
           <div class="mock-progress" id="mockProgress"></div>
           <div class="mock-tabs">
             <button class="active" data-mocktab="board" id="mockTabBtnBoard">Board</button>
@@ -659,6 +679,7 @@ const FIREBASE_ROOM_ID = "d4c8eef52ea544f7d9cd";
   let mockMode = false;
   let mockSnapshot = null;
   let lastMockPick = null; // { player, price, winnerTeam, trail, pickNum } -- drives the ESPN-style auction stage
+  let mockAuction = null; // { player, nominatorCode, price, highBidder, trail, willingness } -- the LIVE in-progress auction, if any
 
   const $ = id => document.getElementById(id);
   function findTeam(code){ return teams.find(t=>t.code===code); }
@@ -1067,7 +1088,17 @@ const FIREBASE_ROOM_ID = "d4c8eef52ea544f7d9cd";
         actionHtml = "";
       } else {
         statusHtml = `<span class="status-chip status-avail">AVAILABLE</span>`;
-        actionHtml = `<button class="mini-btn" data-nominate="${p.id}">Nominate</button>`;
+        if (mockMode) {
+          const canNominate = !mockAuction && teams[onClockIdx] && teams[onClockIdx].code === myTeamCode;
+          if (canNominate) {
+            actionHtml = `<button class="mini-btn" data-mock-nominate="${p.id}">Nominate</button>`;
+          } else {
+            const reason = mockAuction ? "An auction is already in progress" : "Not your nomination turn — wait for the clock to reach your team";
+            actionHtml = `<button class="mini-btn" disabled title="${reason}">Nominate</button>`;
+          }
+        } else {
+          actionHtml = `<button class="mini-btn" data-nominate="${p.id}">Nominate</button>`;
+        }
       }
       const cap = positionCaps[p.pos];
       const capNote = (cap !== undefined && p._adj > cap) ? ` <span title="Your personal cap for ${p.pos} is $${cap}">🔒$${cap}</span>` : "";
@@ -1112,6 +1143,15 @@ const FIREBASE_ROOM_ID = "d4c8eef52ea544f7d9cd";
     });
   });
   $("csBody").addEventListener("click", e => {
+    const mockBtn = e.target.closest("[data-mock-nominate]");
+    if (mockBtn) {
+      const player = byId.get(parseInt(mockBtn.dataset.mockNominate,10));
+      if (player && !mockAuction && teams[onClockIdx] && teams[onClockIdx].code === myTeamCode) {
+        mockOpenAuction(player, myTeamCode);
+        window.scrollTo({top:0, behavior:"smooth"});
+      }
+      return;
+    }
     const btn = e.target.closest("[data-nominate]");
     if (!btn) return;
     selectPlayer(parseInt(btn.dataset.nominate,10));
@@ -1352,6 +1392,7 @@ const FIREBASE_ROOM_ID = "d4c8eef52ea544f7d9cd";
     onClockIdx = 0;
     nextId = 1;
     lastMockPick = null;
+    mockAuction = null;
     mockRosterViewCode = myTeamCode;
     mockActiveTab = "board";
     PLAYERS.forEach(p => p.drafted = false);
@@ -1377,6 +1418,7 @@ const FIREBASE_ROOM_ID = "d4c8eef52ea544f7d9cd";
     mockMode = false;
     mockSnapshot = null;
     lastMockPick = null;
+    mockAuction = null;
     $("mockBanner").style.display = "none";
     document.body.classList.remove("mock-theme");
     $("mockDraftToggleBtn").textContent = "🎮 Mock Draft";
@@ -1406,6 +1448,29 @@ const FIREBASE_ROOM_ID = "d4c8eef52ea544f7d9cd";
     const stage = $("mockStage");
     const progress = $("mockProgress");
     if (!stage) return;
+    if (mockAuction) {
+      const a = mockAuction;
+      const trailHtml = (a.trail || []).slice(-10).map(step =>
+        `<span class="step"><b>$${step.price}</b> ${step.teamCode}</span>`
+      ).join("");
+      const leader = findTeam(a.highBidder);
+      stage.innerHTML = `
+        <div class="mock-stage-main live">
+          <div class="badge-pos">${a.player.pos}</div>
+          <div class="stage-info">
+            <div class="stage-name">${a.player.name}<span class="live-tag">LIVE</span></div>
+            <div class="stage-meta">${a.player.pos} &middot; ${a.player.team} &middot; Bye ${a.player.bye} &middot; Base $${a.player.value} &middot; nominated by ${a.nominatorCode}</div>
+          </div>
+          <div class="stage-result">
+            <div class="stage-price">$${a.price}</div>
+            <div class="stage-winner">${leader ? leader.code : a.highBidder} leading</div>
+          </div>
+        </div>
+        <div class="mock-trail">${trailHtml}</div>
+      `;
+      if (progress) progress.textContent = `Pick ${log.length + 1} of ${teams.length * TOTAL_SLOTS} — live auction in progress`;
+      return;
+    }
     if (!lastMockPick) {
       stage.innerHTML = `<div class="stage-placeholder">Draft about to start — hit "Simulate Next Pick" to see the first nomination go to auction.</div>`;
       if (progress) progress.textContent = `Pick 1 of ${teams.length * TOTAL_SLOTS} — ${teams[onClockIdx] ? teams[onClockIdx].code : ""} on the clock`;
@@ -1505,6 +1570,80 @@ const FIREBASE_ROOM_ID = "d4c8eef52ea544f7d9cd";
         <div class="pmeta"><span>${entry.teamCode} &middot; ${slotDisplayLabel(entry.slot)}</span><span class="pprice">$${entry.price}</span></div>
       </div>`;
     }).join("");
+  }
+  // The user's decision point during a live interactive auction: bid, pass,
+  // lock in a pick they're already winning, or continue past one they can't
+  // touch. Also surfaces "your turn to nominate" when no auction is active.
+  function renderMockBidbox(){
+    const el = $("mockBidbox");
+    if (!el) return;
+    const a = mockAuction;
+    if (!a) {
+      const onClockTeam = teams[onClockIdx];
+      if (onClockTeam && onClockTeam.code === myTeamCode && openSlots(onClockTeam) > 0) {
+        el.style.display = "";
+        el.innerHTML = `<div class="bidbox-row"><div class="bidbox-status your-turn">🟢 Your turn to nominate — pick a player from the Cheatsheet below.</div></div>`;
+      } else {
+        el.style.display = "none";
+        el.innerHTML = "";
+      }
+      return;
+    }
+    el.style.display = "";
+    const userTeam = findTeam(myTeamCode);
+    const leader = findTeam(a.highBidder);
+    const iAmWinning = a.highBidder === myTeamCode;
+    const eligible = mockUserEligibleFor(a.player, a.price);
+    if (iAmWinning) {
+      el.innerHTML = `
+        <div class="bidbox-row">
+          <div class="bidbox-status good">You're winning ${a.player.name} at <span class="bidbox-price">$${a.price}</span> — no other team wants to top it.</div>
+          <div class="bidbox-actions"><button class="mock-lockin-btn" id="mockLockinBtn">Lock In Pick ✔</button></div>
+        </div>`;
+      $("mockLockinBtn").addEventListener("click", mockFinalizeAuction);
+    } else if (!eligible) {
+      const why = openSlots(userTeam) <= 0 ? "your roster is full"
+        : !suggestSlot(userTeam, a.player.pos) ? "no open slot fits this position"
+        : "not enough budget left to top this bid";
+      el.innerHTML = `
+        <div class="bidbox-row">
+          <div class="bidbox-status dim">${leader ? leader.code : a.highBidder} leads ${a.player.name} at <span class="bidbox-price">$${a.price}</span> — you can't bid (${why}).</div>
+          <div class="bidbox-actions"><button class="mock-lockin-btn" id="mockContinueBtn">Continue ▶</button></div>
+        </div>`;
+      $("mockContinueBtn").addEventListener("click", mockFinalizeAuction);
+    } else {
+      const minBid = a.price + 1;
+      const maxB = maxBid(userTeam);
+      el.innerHTML = `
+        <div class="bidbox-row">
+          <div class="bidbox-status">${leader ? leader.code : a.highBidder} leads ${a.player.name} at <span class="bidbox-price">$${a.price}</span></div>
+          <div class="bidbox-actions">
+            <input type="number" id="mockBidInput" class="mock-bid-input" min="${minBid}" max="${maxB}" step="1" value="${minBid}">
+            <button class="mock-bid-btn" id="mockBidBtn">Bid $</button>
+            <button class="mock-pass-btn" id="mockPassBtn">Pass</button>
+          </div>
+        </div>`;
+      $("mockBidBtn").addEventListener("click", () => {
+        const v = parseInt($("mockBidInput").value, 10);
+        if (Number.isFinite(v)) mockUserBid(v);
+      });
+      $("mockPassBtn").addEventListener("click", mockUserPass);
+    }
+  }
+  function renderMockControls(){
+    const step1 = $("mockStep1");
+    if (!step1) return;
+    const onClockTeam = teams[onClockIdx];
+    const draftOver = teams.every(t => openSlots(t) <= 0);
+    if (draftOver) {
+      step1.disabled = true; step1.title = "Draft complete"; step1.textContent = "▶ Simulate Next Pick";
+    } else if (mockAuction) {
+      step1.disabled = true; step1.title = "Resolve the live auction above first"; step1.textContent = "▶ Auction in progress…";
+    } else if (onClockTeam && onClockTeam.code === myTeamCode) {
+      step1.disabled = true; step1.title = "Nominate a player from the Cheatsheet below"; step1.textContent = "▶ Your turn to nominate";
+    } else {
+      step1.disabled = false; step1.title = ""; step1.textContent = "▶ Simulate Next Pick";
+    }
   }
   function initMockTabs(){
     const boardBtn = $("mockTabBtnBoard"), budgetsBtn = $("mockTabBtnBudgets");
@@ -1610,17 +1749,144 @@ const FIREBASE_ROOM_ID = "d4c8eef52ea544f7d9cd";
   }
   function mockRunN(n){
     for (let i=0; i<n; i++){
+      // a fast-forward should fully auto-play everyone (including the user's
+      // own seat) -- if a live interactive auction is sitting paused waiting
+      // on the user's bid/pass decision, resolve it the same auto-played way
+      // before moving on, so nothing gets orphaned.
+      if (mockAuction) mockAutoResolvePendingAuction();
       if (teams.every(t => openSlots(t) <= 0)) break;
       const kept = mockRunOnePick();
       if (!kept) break;
     }
     renderAll();
   }
+
+  // ---- interactive single-step auction engine ----
+  // Unlike mockRunOnePick (which resolves a whole pick atomically, auto-
+  // playing every team including the user), this engine nominates one player
+  // at a time and lets AI teams settle to their equilibrium price, then PAUSES
+  // for the user's own team to decide bid/pass/continue via the bid box --
+  // repeatable any number of times per auction, on any team's nomination (not
+  // just the user's own), until the pick is locked in.
+  function mockUserEligibleFor(player, price){
+    const team = findTeam(myTeamCode);
+    if (!team || openSlots(team) <= 0) return false;
+    if (!suggestSlot(team, player.pos)) return false;
+    return maxBid(team) >= price + 1;
+  }
+  // Let every AI team (everyone except the user's own seat) react to the
+  // current price/leader until no AI team is willing/able to top it. Safe to
+  // call repeatedly (e.g. after each user bid) -- it just no-ops once stable.
+  function mockAiSettle(){
+    const a = mockAuction;
+    if (!a) return;
+    const mult = inflationMultiplier();
+    let guard = 0;
+    while (a.price < BUDGET && guard < 500) {
+      guard++;
+      const aiContenders = teams.filter(t => {
+        if (t.code === myTeamCode || t.code === a.highBidder) return false;
+        if (openSlots(t) <= 0 || maxBid(t) < a.price + 1) return false;
+        if (!(t.code in a.willingness)) a.willingness[t.code] = mockWillingness(t, a.player, mult);
+        return a.willingness[t.code] >= a.price + 1;
+      });
+      if (!aiContenders.length) break;
+      const pick = aiContenders[Math.floor(Math.random()*aiContenders.length)];
+      a.highBidder = pick.code;
+      a.price += 1;
+      a.trail.push({ teamCode: a.highBidder, price: a.price });
+    }
+  }
+  function mockOpenAuction(player, nominatorCode){
+    if (mockAuction || !player) return;
+    mockAuction = {
+      player, nominatorCode,
+      price: 1, highBidder: nominatorCode,
+      trail: [{ teamCode: nominatorCode, price: 1 }],
+      willingness: {},
+    };
+    mockAiSettle();
+    renderAll();
+  }
+  function mockUserBid(amount){
+    const a = mockAuction;
+    if (!a) return;
+    const team = findTeam(myTeamCode);
+    const mb = maxBid(team);
+    amount = Math.round(amount);
+    if (!Number.isFinite(amount)) return;
+    if (amount < a.price + 1) amount = a.price + 1;
+    if (amount > mb) amount = mb;
+    if (amount < a.price + 1 || amount > mb) return; // can't legally top the current price
+    a.highBidder = myTeamCode;
+    a.price = amount;
+    a.trail.push({ teamCode: myTeamCode, price: amount });
+    mockAiSettle();
+    renderAll();
+  }
+  // Passing / continuing both just lock in whoever is currently leading --
+  // once the user declines to act there's nothing left that can still move.
+  function mockUserPass(){ mockFinalizeAuction(); }
+  function mockFinalizeAuction(){
+    const a = mockAuction;
+    if (!a) return;
+    const winnerTeam = findTeam(a.highBidder);
+    const slot = winnerTeam ? suggestSlot(winnerTeam, a.player.pos) : null;
+    if (winnerTeam && slot) {
+      winnerTeam.roster[slot] = { playerId: a.player.id, name: a.player.name, price: a.price };
+      a.player.drafted = true;
+      log.push({ id: nextId++, playerId: a.player.id, teamCode: winnerTeam.code, slot, price: a.price });
+      lastMockPick = { player: a.player, price: a.price, winnerTeam, nominatorCode: a.nominatorCode, trail: a.trail, pickNum: log.length };
+    }
+    mockAuction = null;
+    onClockIdx = (onClockIdx + 1) % teams.length;
+    renderAll();
+    cloudSave();
+  }
+  // Used only by the bulk fast-forward buttons to auto-play the user's own
+  // decision on a pending live auction, same heuristic as any AI team.
+  function mockAutoResolvePendingAuction(){
+    const a = mockAuction;
+    if (!a) return;
+    const mult = inflationMultiplier();
+    let guard = 0;
+    while (a.price < BUDGET && guard < 500) {
+      guard++;
+      const contenders = teams.filter(t => {
+        if (t.code === a.highBidder) return false;
+        if (openSlots(t) <= 0 || maxBid(t) < a.price + 1) return false;
+        if (!(t.code in a.willingness)) a.willingness[t.code] = mockWillingness(t, a.player, mult);
+        return a.willingness[t.code] >= a.price + 1;
+      });
+      if (!contenders.length) break;
+      const pick = contenders[Math.floor(Math.random()*contenders.length)];
+      a.highBidder = pick.code;
+      a.price += 1;
+      a.trail.push({ teamCode: a.highBidder, price: a.price });
+    }
+    mockFinalizeAuction();
+  }
+  function mockRunOnePickLive(){
+    if (mockAuction) return; // an auction is already paused awaiting the user's decision
+    let guard = 0;
+    while (openSlots(teams[onClockIdx]) <= 0 && guard < teams.length) { onClockIdx = (onClockIdx+1) % teams.length; guard++; }
+    const nominator = teams[onClockIdx];
+    if (openSlots(nominator) <= 0) { renderAll(); return; } // every team full, draft is over
+    if (nominator.code === myTeamCode) {
+      // never auto-nominate for the user's own team in single-step mode --
+      // wait for them to pick a player from the Cheatsheet below.
+      renderAll();
+      return;
+    }
+    const player = mockAutoNominate(nominator);
+    if (!player) { onClockIdx = (onClockIdx+1) % teams.length; renderAll(); return; }
+    mockOpenAuction(player, nominator.code);
+  }
   $("mockDraftToggleBtn").addEventListener("click", () => {
     if (mockMode) exitMockDraft(); else enterMockDraft();
   });
   $("mockExitBtn").addEventListener("click", exitMockDraft);
-  $("mockStep1").addEventListener("click", () => mockRunN(1));
+  $("mockStep1").addEventListener("click", () => mockRunOnePickLive());
   $("mockStep5").addEventListener("click", () => mockRunN(5));
   $("mockStepRest").addEventListener("click", () => mockRunN(500));
 
@@ -1691,7 +1957,7 @@ const FIREBASE_ROOM_ID = "d4c8eef52ea544f7d9cd";
     populateTeamSelect();
     if (selectedPlayerId) { renderSelectedPlayerCard(); renderRecommendation(); populateSlotSelectFromPlayer(); }
     if (mockMode) {
-      renderMockStrip(); renderMockStage(); renderMockRoster();
+      renderMockStrip(); renderMockStage(); renderMockBidbox(); renderMockControls(); renderMockRoster();
       renderMockBoard(); renderMockBudgets(); renderMockPicksTicker();
     }
   }
