@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fantasy Football Auction Draft Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafafa;
+    --panel: #ffffff;
+    --panel-border: #e4e4e7;
+    --text: #09090b;
+    --text-dim: #71717a;
+    --accent: #18181b;
+    --accent-foreground: #fafafa;
+    --accent-dim: #f4f4f5;
+    --good: #16a34a;
+    --good-bg: #f0fdf4;
+    --warn: #b45309;
+    --warn-bg: #fffbeb;
+    --bad: #dc2626;
+    --bad-bg: #fef2f2;
+    --ring: rgba(9,9,11,0.10);
+    --shadow: 0 1px 2px 0 rgba(0,0,0,0.04);
+    --shadow-md: 0 1px 3px 0 rgba(0,0,0,0.07), 0 1px 2px -1px rgba(0,0,0,0.06);
+    --radius: 0.65rem;
+    --radius-sm: 0.5rem;
+  }
+  [data-theme="dark"] {
+    --bg: #09090b;
+    --panel: #18181b;
+    --panel-border: #27272a;
+    --text: #fafafa;
+    --text-dim: #a1a1aa;
+    --accent: #fafafa;
+    --accent-foreground: #18181b;
+    --accent-dim: #27272a;
+    --good: #4ade80;
+    --good-bg: rgba(74,222,128,0.12);
+    --warn: #fbbf24;
+    --warn-bg: rgba(251,191,36,0.12);
+    --bad: #f87171;
+    --bad-bg: rgba(248,113,113,0.12);
+    --ring: rgba(250,250,250,0.16);
+    --shadow: 0 1px 2px 0 rgba(0,0,0,0.4);
+    --shadow-md: 0 1px 3px 0 rgba(0,0,0,0.5), 0 1px 2px -1px rgba(0,0,0,0.5);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    background: var(--bg);
+    color: var(--text);
+    transition: background 0.2s, color 0.2s;
+    letter-spacing: -0.011em;
+  }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 20px 24px 60px; }
+
+  header.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  header.top h1 { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -0.02em; }
+  header.top .sub { color: var(--text-dim); font-size: 13px; margin-top: 2px; }
+  .theme-btn {
+    border: 1px solid var(--panel-border);
+    background: var(--panel);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .theme-btn:hover { background: var(--accent-dim); }
+  .theme-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+  .clock-banner {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--panel-border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow);
+  }
+  .clock-banner .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .clock-banner .team-name { font-size: 18px; font-weight: 700; margin-top: 2px; letter-spacing: -0.01em; }
+  .clock-banner .nav-btns button {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 7px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    margin-left: 8px;
+    transition: background 0.15s;
+  }
+  .clock-banner .nav-btns button:hover { background: var(--accent-dim); }
+
+  .stat-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .tile {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    box-shadow: var(--shadow);
+  }
+  .tile .tile-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .tile .tile-value { font-size: 22px; font-weight: 700; margin-top: 4px; letter-spacing: -0.02em; }
+
+  .layout { display: grid; grid-template-columns: 360px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .panel h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; letter-spacing: -0.01em; }
+
+  .form-row { margin-bottom: 10px; }
+  .form-row label { display: block; font-size: 12px; font-weight: 500; color: var(--text-dim); margin-bottom: 4px; }
+  .form-row input, .form-row select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--panel-border);
+    background: var(--panel);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .form-row input:focus, .form-row select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+  .suggestion { font-size: 12px; color: var(--text-dim); margin-top: 4px; min-height: 16px; }
+  .error-msg { font-size: 12px; color: var(--bad); margin-top: 6px; min-height: 16px; }
+  .primary-btn {
+    width: 100%;
+    padding: 9px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--accent-foreground);
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: opacity 0.15s;
+  }
+  .primary-btn:hover { opacity: 0.9; }
+  .primary-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+  .secondary-btn {
+    border: 1px solid var(--panel-border);
+    background: var(--panel);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .secondary-btn:hover { background: var(--accent-dim); }
+
+  .io-row { display: flex; gap: 8px; margin-top: 14px; }
+  .io-row button { flex: 1; }
+
+  .teams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .team-card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    padding: 14px;
+    box-shadow: var(--shadow);
+  }
+  .team-card.on-clock { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+  .team-card .team-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .team-card .team-code { font-size: 11px; color: var(--text-dim); font-weight: 700; letter-spacing: 0.05em; }
+  .team-card .team-name { font-size: 14px; font-weight: 600; }
+  .team-card .manager { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
+
+  .budget-row { display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0; }
+  .budget-row .v { font-weight: 600; }
+  .health-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 1px solid transparent;
+  }
+  .health-good { background: var(--good-bg); color: var(--good); }
+  .health-warn { background: var(--warn-bg); color: var(--warn); }
+  .health-bad { background: var(--bad-bg); color: var(--bad); }
+
+  .roster-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+  .roster-table td { padding: 3px 2px; border-bottom: 1px solid var(--panel-border); }
+  .roster-table td.slot { color: var(--text-dim); width: 60px; font-weight: 600; }
+  .roster-table td.player { color: var(--text); }
+  .roster-table td.price { text-align: right; color: var(--text-dim); width: 40px; }
+  .roster-table tr.filled td.player { color: var(--text); font-weight: 600; }
+  .roster-table tr.empty td.player { color: var(--text-dim); font-style: italic; }
+
+  .log-panel { margin-top: 20px; }
+  table.log-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.log-table th, table.log-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--panel-border); }
+  table.log-table th { color: var(--text-dim); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.log-table tr:hover td { background: var(--accent-dim); }
+  .del-btn { background: none; border: none; color: var(--bad); cursor: pointer; font-size: 12px; }
+  .log-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .empty-state { color: var(--text-dim); font-size: 13px; padding: 12px 0; text-align: center; }
+</style>
+</head>
+<body data-theme="light">
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>Auction Draft Tracker</h1>
+      <div class="sub">10 teams &middot; $200 budget &middot; 18 roster spots</div>
+    </div>
+    <button class="theme-btn" id="themeToggle">🌙 Dark mode</button>
+  </header>
+
+  <div class="clock-banner">
+    <div>
+      <div class="label">On the clock</div>
+      <div class="team-name" id="onClockName">—</div>
+    </div>
+    <div class="nav-btns">
+      <button id="prevClock">◀ Prev</button>
+      <button id="nextClock">Next ▶</button>
+    </div>
+  </div>
+
+  <div class="stat-tiles" id="statTiles"></div>
+
+  <div class="layout">
+    <div class="panel">
+      <h2>Log a Pick</h2>
+      <div class="form-row">
+        <label for="playerName">Player name</label>
+        <input type="text" id="playerName" placeholder="e.g. Ja'Marr Chase">
+      </div>
+      <div class="form-row">
+        <label for="playerPos">Position</label>
+        <select id="playerPos">
+          <option value="QB">QB</option>
+          <option value="RB">RB</option>
+          <option value="WR">WR</option>
+          <option value="TE">TE</option>
+          <option value="K">K</option>
+          <option value="DL">DL</option>
+          <option value="LB">LB</option>
+          <option value="DB">DB</option>
+          <option value="DST">DST</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="winningTeam">Winning team</label>
+        <select id="winningTeam"></select>
+      </div>
+      <div class="form-row">
+        <label for="winPrice">Winning price ($)</label>
+        <input type="number" id="winPrice" min="1" step="1" placeholder="e.g. 42">
+      </div>
+      <div class="form-row">
+        <label for="slotOverride">Roster slot</label>
+        <select id="slotOverride"></select>
+        <div class="suggestion" id="slotSuggestion"></div>
+      </div>
+      <div class="error-msg" id="formError"></div>
+      <button class="primary-btn" id="logPickBtn">Log Pick</button>
+      <button class="secondary-btn" id="undoBtn" style="width:100%; margin-top:8px;">Undo Last Pick</button>
+
+      <div class="io-row">
+        <button class="secondary-btn" id="exportBtn">⬇ Export JSON</button>
+        <button class="secondary-btn" id="importBtn">⬆ Import JSON</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json" style="display:none;">
+    </div>
+
+    <div>
+      <div class="teams-grid" id="teamsGrid"></div>
+
+      <div class="panel log-panel">
+        <div class="log-actions">
+          <h2 style="margin:0;">Draft Log</h2>
+          <span class="sub" id="logCount" style="color:var(--text-dim); font-size:12px;"></span>
+        </div>
+        <table class="log-table" id="logTable">
+          <thead>
+            <tr><th>#</th><th>Player</th><th>Pos</th><th>Team</th><th>Slot</th><th>Price</th><th></th></tr>
+          </thead>
+          <tbody id="logBody"></tbody>
+        </table>
+        <div class="empty-state" id="logEmpty">No picks logged yet.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const BUDGET = 300;
+  const DEDICATED_SLOTS = ["QB", "RB", "WR", "TE", "K", "DL", "LB", "DB", "DST"];
+  const SLOT_ELIGIBILITY = {
+    QB: ["QB"], RB: ["RB"], WR: ["WR"], TE: ["TE"],
+    K: ["K"], DL: ["DL"], LB: ["LB"], DB: ["DB"], DST: ["DST"],
+    FLEX1: ["RB", "WR", "TE"], FLEX2: ["RB", "WR", "TE"], FLEX3: ["RB", "WR", "TE"],
+    OP: ["QB", "RB", "WR", "TE"],
+    DP1: ["DL", "LB", "DB"], DP2: ["DL", "LB", "DB"],
+    BENCH1: ["QB","RB","WR","TE","K","DL","LB","DB","DST"],
+    BENCH2: ["QB","RB","WR","TE","K","DL","LB","DB","DST"],
+    BENCH3: ["QB","RB","WR","TE","K","DL","LB","DB","DST"],
+    BENCH4: ["QB","RB","WR","TE","K","DL","LB","DB","DST"],
+    BENCH5: ["QB","RB","WR","TE","K","DL","LB","DB","DST"],
+    BENCH6: ["QB","RB","WR","TE","K","DL","LB","DB","DST"],
+  };
+  const SLOT_ORDER = ["QB","RB","WR","TE","FLEX1","FLEX2","FLEX3","OP","K","DL","LB","DB","DP1","DP2","DST",
+    "BENCH1","BENCH2","BENCH3","BENCH4","BENCH5","BENCH6"];
+  const SLOT_LABEL = {
+    QB:"QB", RB:"RB", WR:"WR", TE:"TE", FLEX1:"FLEX", FLEX2:"FLEX", FLEX3:"FLEX", OP:"OP",
+    K:"K", DL:"DL", LB:"LB", DB:"DB", DP1:"DP", DP2:"DP", DST:"DST",
+    BENCH1:"BN", BENCH2:"BN", BENCH3:"BN", BENCH4:"BN", BENCH5:"BN", BENCH6:"BN"
+  };
+  const TOTAL_SLOTS = SLOT_ORDER.length; // 21 (15 starters + 6 bench)
+
+  const TEAMS = [
+    { code: "SRID", name: "Hail to Pitts :)", manager: "Sridhar Mandyam" },
+    { code: "IS",   name: "Dakoit", manager: "Iday Shanawaz" },
+    { code: "CYD",  name: "Questionable At Best", manager: "Matt Keller" },
+    { code: "SPIR", name: "Fadi loves $100 Golden Showas", manager: "Abhijit Shome" },
+    { code: "Razi", name: "MS Dhoni", manager: "Razi Imam" },
+    { code: "NUTZ", name: "Abhi Loves Golden Balls", manager: "Fahad Mahmood" },
+    { code: "TB12", name: "Patty-Kelce call me Beeach 2-0", manager: "Sanjay Gulati" },
+    { code: "FF",   name: "The Wadinator Fawad Asghar", manager: "Mike Dvorchak" },
+    { code: "BILG", name: "Purdy Terrible", manager: "Christian Bilger" },
+    { code: "BROW", name: "Swift Boated by Kelce", manager: "Chuck Brownfield" },
+  ];
+
+  // ---- state (in-memory only; no localStorage) ----
+  let teams = TEAMS.map(t => ({
+    ...t,
+    roster: Object.fromEntries(SLOT_ORDER.map(s => [s, null])), // slot -> {player,pos,price}
+  }));
+  let log = []; // {id, player, pos, teamCode, slot, price}
+  let onClockIdx = 0;
+  let nextId = 1;
+
+  // ---- derived helpers ----
+  function spent(team) {
+    return SLOT_ORDER.reduce((sum, s) => sum + (team.roster[s] ? team.roster[s].price : 0), 0);
+  }
+  function filledCount(team) {
+    return SLOT_ORDER.reduce((n, s) => n + (team.roster[s] ? 1 : 0), 0);
+  }
+  function openSlots(team) {
+    return TOTAL_SLOTS - filledCount(team);
+  }
+  function remaining(team) {
+    return BUDGET - spent(team);
+  }
+  function maxBid(team) {
+    // must reserve $1 for every OTHER open roster slot
+    const open = openSlots(team);
+    if (open <= 0) return 0;
+    return remaining(team) - (open - 1);
+  }
+  function findTeam(code) { return teams.find(t => t.code === code); }
+
+  function suggestSlot(team, pos) {
+    for (const s of DEDICATED_SLOTS) {
+      if (SLOT_ELIGIBILITY[s].includes(pos) && !team.roster[s]) return s;
+    }
+    for (const s of ["FLEX1","FLEX2","FLEX3"]) {
+      if (SLOT_ELIGIBILITY[s].includes(pos) && !team.roster[s]) return s;
+    }
+    if (SLOT_ELIGIBILITY.OP.includes(pos) && !team.roster.OP) return "OP";
+    for (const s of ["DP1","DP2"]) {
+      if (SLOT_ELIGIBILITY[s].includes(pos) && !team.roster[s]) return s;
+    }
+    for (const b of ["BENCH1","BENCH2","BENCH3","BENCH4","BENCH5","BENCH6"]) {
+      if (!team.roster[b]) return b;
+    }
+    return null;
+  }
+
+  // ---- DOM refs ----
+  const $ = id => document.getElementById(id);
+  const teamSelect = $("winningTeam");
+  const slotSelect = $("slotOverride");
+  const playerPos = $("playerPos");
+
+  function populateTeamSelect() {
+    teamSelect.innerHTML = teams.map(t => `<option value="${t.code}">${t.code} — ${t.name}</option>`).join("");
+  }
+
+  function populateSlotSelect() {
+    const teamCode = teamSelect.value;
+    const team = findTeam(teamCode);
+    const pos = playerPos.value;
+    if (!team) { slotSelect.innerHTML = ""; return; }
+    const suggested = suggestSlot(team, pos);
+    slotSelect.innerHTML = SLOT_ORDER.map(s => {
+      const filled = team.roster[s];
+      const eligible = SLOT_ELIGIBILITY[s].includes(pos);
+      const label = slotDisplayLabel(s);
+      const disabled = filled ? "disabled" : "";
+      const tag = filled ? ` (filled: ${filled.player})` : (eligible ? "" : " (not eligible)");
+      const sel = s === suggested ? "selected" : "";
+      return `<option value="${s}" ${disabled} ${sel}>${label}${tag}</option>`;
+    }).join("");
+    $("slotSuggestion").textContent = suggested
+      ? `Suggested: ${slotDisplayLabel(suggested)}`
+      : "No open eligible slot for this position.";
+  }
+
+  function render() {
+    renderStatTiles();
+    renderClockBanner();
+    renderTeams();
+    renderLog();
+    populateSlotSelect();
+  }
+
+  function renderStatTiles() {
+    const totalSpent = teams.reduce((s, t) => s + spent(t), 0);
+    const totalRemaining = teams.length * BUDGET - totalSpent;
+    const drafted = log.length;
+    const avgPrice = drafted ? (totalSpent / drafted).toFixed(1) : "0.0";
+    const totalSlots = teams.length * TOTAL_SLOTS;
+    $("statTiles").innerHTML = `
+      <div class="tile"><div class="tile-label">Players Drafted</div><div class="tile-value">${drafted} / ${totalSlots}</div></div>
+      <div class="tile"><div class="tile-label">Total Spent</div><div class="tile-value">$${totalSpent}</div></div>
+      <div class="tile"><div class="tile-label">League $ Remaining</div><div class="tile-value">$${totalRemaining}</div></div>
+      <div class="tile"><div class="tile-label">Avg Price</div><div class="tile-value">$${avgPrice}</div></div>
+    `;
+  }
+
+  function renderClockBanner() {
+    const t = teams[onClockIdx];
+    $("onClockName").textContent = `${t.code} — ${t.name} (${t.manager})`;
+  }
+
+  function healthClass(team) {
+    const open = openSlots(team);
+    if (open === 0) return "health-good";
+    const perSlot = remaining(team) / open;
+    if (perSlot >= 12) return "health-good";
+    if (perSlot >= 5) return "health-warn";
+    return "health-bad";
+  }
+  function healthLabel(team) {
+    const cls = healthClass(team);
+    if (cls === "health-good") return "Healthy";
+    if (cls === "health-warn") return "Tight";
+    return "Thin";
+  }
+
+  function slotDisplayLabel(s) {
+    if (s.startsWith("BENCH")) return "BN" + s.slice(5);
+    if (s.startsWith("FLEX")) return "FLEX " + s.slice(4);
+    if (s.startsWith("DP")) return "DP " + s.slice(2);
+    return s;
+  }
+
+  function renderTeams() {
+    $("teamsGrid").innerHTML = teams.map((t, i) => {
+      const rows = SLOT_ORDER.map(s => {
+        const p = t.roster[s];
+        return `<tr class="${p ? "filled" : "empty"}">
+          <td class="slot">${slotDisplayLabel(s)}</td>
+          <td class="player">${p ? p.player : "—"}</td>
+          <td class="price">${p ? "$"+p.price : ""}</td>
+        </tr>`;
+      }).join("");
+      return `
+      <div class="team-card ${i === onClockIdx ? "on-clock" : ""}">
+        <div class="team-head">
+          <div><span class="team-code">${t.code}</span></div>
+          <span class="health-badge ${healthClass(t)}">${healthLabel(t)}</span>
+        </div>
+        <div class="team-name">${t.name}</div>
+        <div class="manager">${t.manager}</div>
+        <div class="budget-row"><span>Spent</span><span class="v">$${spent(t)}</span></div>
+        <div class="budget-row"><span>Remaining</span><span class="v">$${remaining(t)}</span></div>
+        <div class="budget-row"><span>Max bid</span><span class="v">$${Math.max(maxBid(t), 0)}</span></div>
+        <div class="budget-row"><span>Open slots</span><span class="v">${openSlots(t)} / ${TOTAL_SLOTS}</span></div>
+        <table class="roster-table">${rows}</table>
+      </div>`;
+    }).join("");
+  }
+
+  function renderLog() {
+    const body = $("logBody");
+    if (log.length === 0) {
+      body.innerHTML = "";
+      $("logEmpty").style.display = "block";
+    } else {
+      $("logEmpty").style.display = "none";
+      body.innerHTML = log.slice().reverse().map((entry, idx) => {
+        const num = log.length - idx;
+        return `<tr>
+          <td>${num}</td>
+          <td>${entry.player}</td>
+          <td>${entry.pos}</td>
+          <td>${entry.teamCode}</td>
+          <td>${slotDisplayLabel(entry.slot)}</td>
+          <td>$${entry.price}</td>
+          <td><button class="del-btn" data-id="${entry.id}">Delete</button></td>
+        </tr>`;
+      }).join("");
+    }
+    $("logCount").textContent = `${log.length} pick${log.length === 1 ? "" : "s"} logged`;
+  }
+
+  // ---- actions ----
+  function logPick() {
+    const player = $("playerName").value.trim();
+    const pos = playerPos.value;
+    const teamCode = teamSelect.value;
+    const price = parseInt($("winPrice").value, 10);
+    const slot = slotSelect.value;
+    const errEl = $("formError");
+    errEl.textContent = "";
+
+    if (!player) { errEl.textContent = "Enter a player name."; return; }
+    if (!Number.isFinite(price) || price < 1) { errEl.textContent = "Enter a valid winning price ($1+)."; return; }
+    const team = findTeam(teamCode);
+    if (!team) { errEl.textContent = "Select a team."; return; }
+    if (!slot || team.roster[slot]) { errEl.textContent = "Select an open roster slot."; return; }
+    if (!SLOT_ELIGIBILITY[slot].includes(pos)) { errEl.textContent = `${pos} is not eligible for that slot.`; return; }
+    const mb = maxBid(team);
+    if (price > mb) {
+      errEl.textContent = `Price exceeds ${team.code}'s max bid of $${Math.max(mb,0)} (must reserve $1 per remaining open slot).`;
+      return;
+    }
+    if (price > remaining(team)) {
+      errEl.textContent = `Price exceeds ${team.code}'s remaining budget of $${remaining(team)}.`;
+      return;
+    }
+
+    team.roster[slot] = { player, price };
+    const entry = { id: nextId++, player, pos, teamCode, slot, price };
+    log.push(entry);
+
+    // clear form
+    $("playerName").value = "";
+    $("winPrice").value = "";
+
+    // advance on-the-clock to next team automatically
+    onClockIdx = (onClockIdx + 1) % teams.length;
+
+    render();
+  }
+
+  function undoLast() {
+    if (log.length === 0) return;
+    const entry = log.pop();
+    const team = findTeam(entry.teamCode);
+    if (team) team.roster[entry.slot] = null;
+    render();
+  }
+
+  function deletePick(id) {
+    const idx = log.findIndex(e => e.id === id);
+    if (idx === -1) return;
+    const entry = log[idx];
+    const team = findTeam(entry.teamCode);
+    if (team) team.roster[entry.slot] = null;
+    log.splice(idx, 1);
+    render();
+  }
+
+  function exportData() {
+    const data = {
+      exportedAt: new Date().toISOString(),
+      onClockIdx,
+      nextId,
+      teams: teams.map(t => ({ code: t.code, roster: t.roster })),
+      log,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `draft-tracker-export-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function importData(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data.teams || !data.log) throw new Error("Invalid file format.");
+        data.teams.forEach(saved => {
+          const t = findTeam(saved.code);
+          if (t) t.roster = saved.roster;
+        });
+        log = data.log;
+        onClockIdx = data.onClockIdx || 0;
+        nextId = data.nextId || (log.reduce((m, e) => Math.max(m, e.id), 0) + 1);
+        render();
+        $("formError").textContent = "";
+      } catch (e) {
+        $("formError").textContent = "Import failed: " + e.message;
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ---- events ----
+  $("logPickBtn").addEventListener("click", logPick);
+  $("undoBtn").addEventListener("click", undoLast);
+  $("logBody").addEventListener("click", e => {
+    if (e.target.classList.contains("del-btn")) {
+      deletePick(parseInt(e.target.dataset.id, 10));
+    }
+  });
+  teamSelect.addEventListener("change", populateSlotSelect);
+  playerPos.addEventListener("change", populateSlotSelect);
+  $("prevClock").addEventListener("click", () => {
+    onClockIdx = (onClockIdx - 1 + teams.length) % teams.length;
+    renderClockBanner(); renderTeams();
+  });
+  $("nextClock").addEventListener("click", () => {
+    onClockIdx = (onClockIdx + 1) % teams.length;
+    renderClockBanner(); renderTeams();
+  });
+  $("exportBtn").addEventListener("click", exportData);
+  $("importBtn").addEventListener("click", () => $("importFile").click());
+  $("importFile").addEventListener("change", e => {
+    if (e.target.files[0]) importData(e.target.files[0]);
+    e.target.value = "";
+  });
+  $("themeToggle").addEventListener("click", () => {
+    const body = document.body;
+    const dark = body.getAttribute("data-theme") === "dark";
+    body.setAttribute("data-theme", dark ? "light" : "dark");
+    $("themeToggle").textContent = dark ? "🌙 Dark mode" : "☀️ Light mode";
+  });
+
+  // ---- init ----
+  populateTeamSelect();
+  render();
+})();
+</script>
+</body>
+</html>

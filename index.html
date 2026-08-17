@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auction Draft Cheatsheet &amp; Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafafa;
+    --panel: #ffffff;
+    --panel-border: #e4e4e7;
+    --text: #09090b;
+    --text-dim: #71717a;
+    --accent: #18181b;
+    --accent-foreground: #fafafa;
+    --accent-dim: #f4f4f5;
+    --good: #16a34a;
+    --good-bg: #f0fdf4;
+    --warn: #b45309;
+    --warn-bg: #fffbeb;
+    --bad: #dc2626;
+    --bad-bg: #fef2f2;
+    --ring: rgba(9,9,11,0.10);
+    --shadow: 0 1px 2px 0 rgba(0,0,0,0.04);
+    --shadow-md: 0 1px 3px 0 rgba(0,0,0,0.07), 0 1px 2px -1px rgba(0,0,0,0.06);
+    --radius: 0.65rem;
+    --radius-sm: 0.5rem;
+  }
+  [data-theme="dark"] {
+    --bg: #09090b;
+    --panel: #18181b;
+    --panel-border: #27272a;
+    --text: #fafafa;
+    --text-dim: #a1a1aa;
+    --accent: #fafafa;
+    --accent-foreground: #18181b;
+    --accent-dim: #27272a;
+    --good: #4ade80;
+    --good-bg: rgba(74,222,128,0.12);
+    --warn: #fbbf24;
+    --warn-bg: rgba(251,191,36,0.12);
+    --bad: #f87171;
+    --bad-bg: rgba(248,113,113,0.12);
+    --ring: rgba(250,250,250,0.16);
+    --shadow: 0 1px 2px 0 rgba(0,0,0,0.4);
+    --shadow-md: 0 1px 3px 0 rgba(0,0,0,0.5), 0 1px 2px -1px rgba(0,0,0,0.5);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    background: var(--bg);
+    color: var(--text);
+    transition: background 0.2s, color 0.2s;
+    letter-spacing: -0.011em;
+  }
+  .wrap { max-width: 1500px; margin:0 auto; padding:20px 24px 60px; }
+  a { color: var(--accent); }
+
+  header.top { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+  header.top h1 { font-size:20px; font-weight:700; margin:0; letter-spacing:-0.02em; }
+  header.top .sub { color:var(--text-dim); font-size:13px; margin-top:2px; }
+  .top-controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .btn, .theme-btn, select.small {
+    border:1px solid var(--panel-border); background:var(--panel); color:var(--text);
+    border-radius:var(--radius-sm); padding:8px 12px; cursor:pointer; font-size:13px; font-weight:500;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .btn:hover, .theme-btn:hover { background:var(--accent-dim); }
+  .btn:focus-visible, .theme-btn:focus-visible { outline:none; box-shadow:0 0 0 3px var(--ring); }
+  select.small { padding:7px 8px; }
+
+  .clock-banner {
+    background: var(--panel); color:var(--text);
+    border:1px solid var(--panel-border); border-left:3px solid var(--accent);
+    border-radius: var(--radius); padding:14px 20px; display:flex; align-items:center;
+    justify-content:space-between; margin-bottom:16px; box-shadow:var(--shadow); flex-wrap:wrap; gap:10px;
+  }
+  .clock-banner .label { font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+  .clock-banner .team-name { font-size:18px; font-weight:700; margin-top:2px; letter-spacing:-0.01em; }
+  .clock-banner .nav-btns button { background:var(--panel); border:1px solid var(--panel-border); color:var(--text); border-radius:var(--radius-sm); padding:7px 12px; cursor:pointer; font-size:12px; font-weight:500; margin-left:8px; transition:background .15s; }
+  .clock-banner .nav-btns button:hover { background:var(--accent-dim); }
+
+  .mock-banner {
+    background: var(--panel); color:var(--text);
+    border:1px solid var(--bad); border-left:3px solid var(--bad);
+    border-radius: var(--radius); padding:12px 18px; margin-bottom:16px; box-shadow:var(--shadow);
+  }
+  .mock-banner .hint { color:var(--text-dim); }
+  .mock-controls { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .mock-controls button { background:var(--panel); border:1px solid var(--panel-border); color:var(--text); border-radius:var(--radius-sm); padding:8px 13px; cursor:pointer; font-size:12.5px; font-weight:600; transition:background .15s; }
+  .mock-controls button:hover { background:var(--accent-dim); }
+  .mock-controls button.mock-exit { background:var(--accent); color:var(--accent-foreground); border-color:var(--accent); margin-left:auto; }
+  .mock-controls button.mock-exit:hover { opacity:.9; }
+
+  /* ---- ESPN-style live auction room (mock draft mode) ---- */
+  .mock-room {
+    background: linear-gradient(180deg, #0b2007 0%, #132a0d 100%);
+    border-radius: var(--radius); padding:14px 16px 16px; margin-top:12px;
+    color:#eafbe4; box-shadow: var(--shadow-md);
+  }
+  .mock-room-top { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .mock-room-title { font-weight:800; font-size:13.5px; letter-spacing:.02em; display:flex; align-items:center; gap:8px; }
+  .mock-room-title .live-dot { width:7px; height:7px; border-radius:50%; background:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,.25); animation: mock-pulse 1.4s infinite; }
+  @keyframes mock-pulse { 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
+  .mock-controls.espn button { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#eafbe4; }
+  .mock-controls.espn button:hover { background:rgba(255,255,255,.18); }
+  .mock-controls.espn button.mock-exit { background:#dc2626; border-color:#dc2626; color:#fff; }
+
+  .mock-strip { display:flex; gap:6px; overflow-x:auto; padding:2px 2px 8px; margin-bottom:12px; }
+  .mock-strip .pill { flex:0 0 auto; min-width:96px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); border-radius:8px; padding:7px 9px; text-align:center; position:relative; }
+  .mock-strip .pill.on-clock { background:#1f4d17; border-color:#4a8f2c; }
+  .mock-strip .pill.on-clock::after { content:""; position:absolute; left:50%; bottom:-7px; transform:translateX(-50%); border-left:6px solid transparent; border-right:6px solid transparent; border-top:7px solid #4a8f2c; }
+  .mock-strip .pill.my-team { box-shadow: inset 0 0 0 1px #7fd858; }
+  .mock-strip .pill .code { font-size:10px; font-weight:700; letter-spacing:.04em; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mock-strip .pill .budget { font-size:15px; font-weight:800; margin-top:3px; }
+  .mock-strip .pill .budget.low { color:#fca5a5; }
+  .mock-strip .pill .pslots { font-size:9.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:#8fd070; margin-top:2px; }
+  .mock-strip .pill .high-bid { position:absolute; top:-8px; right:-4px; background:#e8a33d; color:#241800; font-size:10px; font-weight:800; padding:1px 6px; border-radius:999px; box-shadow:0 1px 3px rgba(0,0,0,.4); }
+
+  .mock-stage { background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.09); border-radius:10px; padding:14px 16px; }
+  .mock-stage-main { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .mock-stage .badge-pos { width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; background:#2a5c1c; color:#eafbe4; flex:0 0 auto; border:2px solid rgba(255,255,255,.15); }
+  .mock-stage .stage-info { flex:1 1 220px; min-width:160px; }
+  .mock-stage .stage-name { font-size:17px; font-weight:800; }
+  .mock-stage .stage-meta { font-size:12px; opacity:.7; margin-top:2px; }
+  .mock-stage .stage-result { text-align:right; flex:0 0 auto; }
+  .mock-stage .stage-price { font-size:24px; font-weight:800; color:#e8a33d; }
+  .mock-stage .stage-winner { font-size:11.5px; opacity:.75; margin-top:2px; }
+  .mock-stage .stage-placeholder { opacity:.6; font-size:13px; padding:6px 2px; }
+  .mock-trail { display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.09); }
+  .mock-trail .step { font-size:10.5px; padding:3px 8px; border-radius:6px; background:rgba(255,255,255,.07); white-space:nowrap; }
+  .mock-trail .step b { color:#e8a33d; }
+  .mock-progress { font-size:11px; opacity:.65; margin-top:10px; text-align:right; }
+
+  /* ---- ESPN 3-column room body: roster rail / board+budgets / picks ticker ---- */
+  .mock-room-body { display:grid; grid-template-columns:200px 1fr 250px; gap:12px; margin-top:14px; align-items:start; }
+  @media (max-width: 1050px) { .mock-room-body { grid-template-columns:1fr; } }
+  .mock-rail { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:8px; padding:10px 12px; color:#eafbe4; }
+  .mock-rail h4 { font-size:10px; text-transform:uppercase; letter-spacing:.06em; opacity:.6; margin:0 0 8px; font-weight:800; }
+  .mock-rail select.small { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); color:#eafbe4; width:100%; margin-bottom:8px; border-radius:6px; padding:5px 6px; font-size:11.5px; }
+  .mock-roster-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .mock-roster-table td { padding:3px 2px; border-bottom:1px solid rgba(255,255,255,.07); }
+  .mock-roster-table td.slot { color:#8fd070; width:36px; font-weight:700; font-size:9.5px; }
+  .mock-roster-table td.player { color:#eafbe4; }
+  .mock-roster-table tr.empty td.player { color:rgba(255,255,255,.35); font-style:italic; }
+  .mock-roster-table td.price { text-align:right; color:rgba(255,255,255,.6); width:28px; }
+  .mock-rail-limits { font-size:10px; opacity:.6; margin-top:8px; line-height:1.6; }
+
+  .mock-tabs { display:flex; gap:2px; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,.08); }
+  .mock-tabs button { background:transparent; border:none; color:rgba(255,255,255,.5); font-size:12px; font-weight:700; padding:7px 12px; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .mock-tabs button.active { color:#eafbe4; border-bottom-color:#e8a33d; }
+  .mock-tabs button:hover { color:#eafbe4; }
+
+  .mock-board-wrap { overflow:auto; max-height:440px; border-radius:6px; }
+  .mock-board { width:100%; border-collapse:collapse; font-size:10.5px; }
+  .mock-board th { text-align:center; font-size:9.5px; padding:5px 4px; color:#8fd070; position:sticky; top:0; background:#0e2409; z-index:1; white-space:nowrap; }
+  .mock-board td { border:1px solid rgba(255,255,255,.06); padding:4px 5px; text-align:center; vertical-align:middle; min-width:64px; }
+  .mock-board td.slotcell { color:rgba(255,255,255,.42); font-weight:700; font-size:9px; text-align:left; min-width:30px; position:sticky; left:0; background:#0e2409; }
+  .mock-board td.filled { background:rgba(255,255,255,.045); }
+  .mock-board td.filled.mine { background:rgba(127,216,88,.12); }
+  .mock-board .bp-name { color:#eafbe4; font-weight:600; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:64px; margin:0 auto; }
+  .mock-board .bp-price { color:#e8a33d; font-weight:800; font-size:10px; }
+
+  .mock-budgets-table { width:100%; border-collapse:collapse; font-size:12px; color:#eafbe4; }
+  .mock-budgets-table th { text-align:left; font-size:9.5px; text-transform:uppercase; letter-spacing:.04em; opacity:.55; padding:5px 8px; }
+  .mock-budgets-table td { padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.07); }
+  .mock-budgets-table td.num { text-align:right; font-weight:700; }
+
+  .mock-picks-ticker { display:flex; flex-direction:column; gap:6px; max-height:520px; overflow-y:auto; }
+  .mock-pick-card { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); border-radius:6px; padding:6px 8px; font-size:11px; }
+  .mock-pick-card .ppos { display:inline-block; font-size:9px; font-weight:800; padding:1px 5px; border-radius:4px; background:#2a5c1c; color:#eafbe4; margin-right:5px; }
+  .mock-pick-card .pname { font-weight:700; color:#eafbe4; }
+  .mock-pick-card .pmeta { color:rgba(255,255,255,.5); font-size:9.5px; margin-top:3px; display:flex; justify-content:space-between; }
+  .mock-pick-card .pprice { color:#e8a33d; font-weight:800; }
+  .mock-picks-empty { font-size:11.5px; opacity:.55; padding:4px 2px; }
+
+  .stat-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:20px; }
+  .tile { background:var(--panel); border:1px solid var(--panel-border); border-radius:var(--radius); padding:12px 14px; box-shadow:var(--shadow); }
+  .tile .tile-label { font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+  .tile .tile-value { font-size:22px; font-weight:700; margin-top:4px; letter-spacing:-0.02em; }
+  .tile .tile-value.good { color:var(--good); }
+  .tile .tile-value.warn { color:var(--warn); }
+  .tile .tile-value.bad { color:var(--bad); }
+
+  .layout { display:grid; grid-template-columns: 380px 1fr; gap:20px; align-items:start; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel { background:var(--panel); border:1px solid var(--panel-border); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); margin-bottom:16px; }
+  .panel h2 { font-size:15px; font-weight:600; margin:0 0 12px; letter-spacing:-0.01em; display:flex; align-items:center; justify-content:space-between; }
+  .panel h2 .hint { font-size:11px; color:var(--text-dim); font-weight:400; }
+
+  .sticky { position: sticky; top: 12px; }
+
+  .form-row { margin-bottom:10px; position:relative; }
+  .form-row label { display:block; font-size:12px; font-weight:500; color:var(--text-dim); margin-bottom:4px; }
+  .form-row input, .form-row select {
+    width:100%; padding:8px 10px; border-radius:var(--radius-sm); border:1px solid var(--panel-border);
+    background:var(--panel); color:var(--text); font-size:14px; font-family:inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .form-row input:focus, .form-row select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring); }
+  .autocomplete-list {
+    position:absolute; z-index:20; top:100%; left:0; right:0; background:var(--panel);
+    border:1px solid var(--panel-border); border-radius:var(--radius-sm); margin-top:4px; max-height:240px;
+    overflow-y:auto; box-shadow:var(--shadow-md); display:none;
+  }
+  .autocomplete-list.show { display:block; }
+  .autocomplete-item { padding:7px 10px; font-size:13px; cursor:pointer; display:flex; justify-content:space-between; gap:8px; }
+  .autocomplete-item:hover, .autocomplete-item.active { background:var(--accent-dim); }
+  .autocomplete-item .ac-name { font-weight:600; }
+  .autocomplete-item .ac-meta { color:var(--text-dim); font-size:11.5px; white-space:nowrap; }
+
+  .selected-player-card {
+    border:1px solid var(--panel-border); border-radius:var(--radius-sm); padding:10px 12px; margin-bottom:10px; background:var(--accent-dim);
+  }
+  .selected-player-card .spname { font-size:15px; font-weight:700; letter-spacing:-0.01em; }
+  .selected-player-card .spmeta { font-size:12px; color:var(--text-dim); margin-bottom:6px; }
+  .sp-values { display:flex; gap:14px; margin-top:6px; flex-wrap:wrap; }
+  .sp-values .v { font-size:12px; color:var(--text-dim); }
+  .sp-values .v b { display:block; font-size:16px; color:var(--text); font-weight:700; }
+  .scarcity-note { font-size:11.5px; color:var(--warn); margin-top:6px; }
+
+  .rec-banner {
+    border-radius:var(--radius-sm); padding:10px 12px; margin:10px 0; font-size:13px; font-weight:600; border:1px solid transparent;
+  }
+  .rec-bid { background:var(--good-bg); color:var(--good); border-color:var(--good); }
+  .rec-fair { background:var(--warn-bg); color:var(--warn); border-color:var(--warn); }
+  .rec-pass { background:var(--bad-bg); color:var(--bad); border-color:var(--bad); }
+  .rec-detail { font-weight:400; font-size:12px; margin-top:3px; display:block; }
+
+  .presentation-view {
+    display:none; position:fixed; inset:0; z-index:9999;
+    background:var(--bg); color:var(--text);
+    flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:40px;
+  }
+  .presentation-view.active { display:flex; }
+  .pres-clock { font-size:26px; color:var(--text-dim); margin-bottom:20px; text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+  .pres-player { font-size:68px; font-weight:800; line-height:1.15; margin-bottom:14px; max-width:1100px; letter-spacing:-0.02em; }
+  .pres-meta { font-size:26px; color:var(--text-dim); margin-bottom:26px; }
+  .pres-rec .rec-banner { font-size:32px; padding:22px 42px; border-radius:16px; max-width:900px; margin:0; }
+  .pres-rec .rec-detail { font-size:17px; margin-top:8px; }
+
+  .primary-btn { width:100%; padding:9px; border-radius:var(--radius-sm); border:1px solid var(--accent); background:var(--accent); color:var(--accent-foreground); font-weight:500; font-size:14px; cursor:pointer; margin-top:6px; transition:opacity .15s; }
+  .primary-btn:hover { opacity:.9; }
+  .primary-btn:focus-visible { outline:none; box-shadow:0 0 0 3px var(--ring); }
+  .primary-btn:disabled { opacity:.5; cursor:not-allowed; }
+  .secondary-btn { border:1px solid var(--panel-border); background:var(--panel); color:var(--text); border-radius:var(--radius-sm); padding:6px 10px; font-size:12px; font-weight:500; cursor:pointer; transition:background .15s; }
+  .secondary-btn:hover { background:var(--accent-dim); }
+  .error-msg { font-size:12px; color:var(--bad); margin-top:6px; min-height:14px; }
+  .io-row { display:flex; gap:8px; margin-top:6px; }
+  .io-row button { flex:1; }
+
+  .cs-controls { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; align-items:center; }
+  .cs-controls input[type=text] { flex:1; min-width:160px; padding:8px 10px; border-radius:var(--radius-sm); border:1px solid var(--panel-border); background:var(--panel); color:var(--text); font-size:13px; font-family:inherit; transition:border-color .15s, box-shadow .15s; }
+  .cs-controls input[type=text]:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring); }
+  .pos-chip { border:1px solid var(--panel-border); background:var(--panel); color:var(--text-dim); border-radius:999px; padding:5px 11px; font-size:12px; font-weight:500; cursor:pointer; transition:background .15s, color .15s, border-color .15s; }
+  .pos-chip:hover { background:var(--accent-dim); }
+  .pos-chip.active { background:var(--accent); color:var(--accent-foreground); border-color:var(--accent); }
+
+  table.cs-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  table.cs-table th { text-align:left; padding:7px 8px; color:var(--text-dim); font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; border-bottom:2px solid var(--panel-border); cursor:pointer; white-space:nowrap; position:sticky; top:0; background:var(--panel); }
+  table.cs-table td { padding:6px 8px; border-bottom:1px solid var(--panel-border); white-space:nowrap; }
+  table.cs-table tr:hover td { background:var(--accent-dim); }
+  table.cs-table tr.drafted td { opacity:.45; }
+  .cs-scroll { max-height:560px; overflow-y:auto; border:1px solid var(--panel-border); border-radius:var(--radius-sm); }
+  .diff-pos { color: var(--bad); font-weight:600; }
+  .diff-neg { color: var(--good); font-weight:600; }
+  .status-chip { font-size:10.5px; padding:2px 7px; border-radius:999px; font-weight:700; }
+  .status-avail { background:var(--good-bg); color:var(--good); }
+  .status-drafted { background:var(--panel-border); color:var(--text-dim); }
+  .mini-btn { border:1px solid var(--panel-border); background:var(--panel); color:var(--text); border-radius:var(--radius-sm); padding:3px 8px; font-size:11px; cursor:pointer; transition:background .15s; }
+  .mini-btn:hover { background:var(--accent-dim); }
+
+  .teams-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:14px; margin-bottom:20px; }
+  .team-card { background:var(--panel); border:1px solid var(--panel-border); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow); }
+  .team-card.on-clock { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-dim); }
+  .team-card.my-team { border-color:var(--good); }
+  .team-card .team-head { display:flex; justify-content:space-between; align-items:baseline; }
+  .team-card .team-code { font-size:11px; color:var(--text-dim); font-weight:700; letter-spacing:.05em; }
+  .team-card .team-name { font-size:14px; font-weight:600; }
+  .team-card .manager { font-size:12px; color:var(--text-dim); margin-bottom:8px; }
+  .budget-row { display:flex; justify-content:space-between; font-size:13px; margin:4px 0; }
+  .budget-row .v { font-weight:600; }
+  .health-badge { display:inline-block; font-size:10px; font-weight:600; padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.04em; border:1px solid transparent; }
+  .health-good { background:var(--good-bg); color:var(--good); }
+  .health-warn { background:var(--warn-bg); color:var(--warn); }
+  .health-bad { background:var(--bad-bg); color:var(--bad); }
+  .danger-tag { font-size:10px; font-weight:700; color:var(--bad); margin-left:6px; white-space:nowrap; }
+  td.good, span.good { color:var(--good); }
+  td.bad, span.bad { color:var(--bad); }
+  .need-badges { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 8px; }
+  .need-chip { font-size:10px; font-weight:600; padding:2px 7px; border-radius:6px; background:var(--accent-dim); color:var(--text); }
+  .need-chip.need-none { background:var(--good-bg); color:var(--good); }
+  .need-chip.pace-hot { background:var(--bad-bg); color:var(--bad); }
+  .need-chip.pace-cold { background:var(--good-bg); color:var(--good); }
+  .roster-table { width:100%; border-collapse:collapse; margin-top:10px; font-size:12px; }
+  .roster-table td { padding:3px 2px; border-bottom:1px solid var(--panel-border); }
+  .roster-table td.slot { color:var(--text-dim); width:52px; font-weight:600; }
+  .roster-table td.player { color:var(--text); }
+  .roster-table tr.filled td.player { color:var(--text); font-weight:600; }
+  .roster-table tr.empty td.player { color:var(--text-dim); font-style:italic; }
+  .roster-table td.price { text-align:right; color:var(--text-dim); width:36px; }
+
+  .log-panel { margin-top:20px; }
+  table.log-table { width:100%; border-collapse:collapse; font-size:13px; }
+  table.log-table th, table.log-table td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--panel-border); }
+  table.log-table th { color:var(--text-dim); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  table.log-table tr:hover td { background:var(--accent-dim); }
+  .del-btn { background:none; border:none; color:var(--bad); cursor:pointer; font-size:12px; }
+  .cloud-status { font-size:11px; margin-top:6px; text-align:center; }
+  .cloud-status.ok { color:var(--good); }
+  .cloud-status.warn { color:var(--text-dim); }
+  .cloud-status.err { color:var(--bad); }
+  .log-actions { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .empty-state { color:var(--text-dim); font-size:13px; padding:12px 0; text-align:center; }
+
+  details.methodology { font-size:12.5px; color:var(--text-dim); }
+  details.methodology summary { cursor:pointer; color:var(--accent); font-weight:600; }
+  details.methodology p, details.methodology ul { margin:8px 0; }
+  details.methodology li { margin-bottom:4px; }
+</style>
+  <!-- Cloud sync: Firebase Firestore (free Spark plan). Loaded from Google's
+       own CDN; if it fails (offline, blocked, no config yet) the app below
+       detects that and falls back to working entirely in-browser, same as
+       before this was added. -->
+  <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore-compat.js"></script>
+</head>
+<body data-theme="light">
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>Auction Draft Cheatsheet &amp; Dashboard</h1>
+      <div class="sub">10 teams &middot; $300 budget &middot; blended from ESPN + Yahoo live 2026 auction markets &middot; Fantasy Footballers ranks for cross-check &middot; live inflation tracking</div>
+    </div>
+    <div class="top-controls">
+      <select class="small" id="myTeamSelect"></select>
+      <button class="btn" id="methodologyToggleBtn">How values work</button>
+      <button class="theme-btn" id="mockDraftToggleBtn">🎮 Mock Draft</button>
+      <button class="theme-btn" id="presentationToggleBtn">🖥 Presentation Mode</button>
+      <button class="theme-btn" id="themeToggle">🌙 Dark mode</button>
+    </div>
+  </header>
+
+  <div class="mock-banner" id="mockBanner" style="display:none;">
+    <div>
+      <b>🎮 MOCK DRAFT IN PROGRESS</b> — this is a rehearsal on scratch data. Nothing here is saved to the cloud or affects your real draft.
+    </div>
+    <div class="hint" style="margin-top:6px; font-size:11.5px;">Every team (including yours) auto-plays by default so you can watch a full draft unfold. You can also jump in any time and manually log a pick yourself via the Bid Assistant below — it works exactly the same as a real draft.</div>
+
+    <div class="mock-room">
+      <div class="mock-room-top">
+        <div class="mock-room-title"><span class="live-dot"></span> LIVE AUCTION ROOM</div>
+        <div class="mock-controls espn">
+          <button id="mockStep1">▶ Simulate Next Pick</button>
+          <button id="mockStep5">▶▶ Simulate Next 5</button>
+          <button id="mockStepRest">⏭ Simulate Rest of Draft</button>
+          <button id="mockExitBtn" class="mock-exit">✕ Exit Mock Draft</button>
+        </div>
+      </div>
+      <div class="mock-strip" id="mockStrip"></div>
+
+      <div class="mock-room-body">
+        <div class="mock-rail" id="mockRosterRail">
+          <h4>Roster</h4>
+          <select class="small" id="mockRosterTeamSelect"></select>
+          <table class="mock-roster-table" id="mockRosterTable"></table>
+          <div class="mock-rail-limits" id="mockRosterLimits"></div>
+        </div>
+
+        <div>
+          <div class="mock-stage" id="mockStage"></div>
+          <div class="mock-progress" id="mockProgress"></div>
+          <div class="mock-tabs">
+            <button class="active" data-mocktab="board" id="mockTabBtnBoard">Board</button>
+            <button data-mocktab="budgets" id="mockTabBtnBudgets">Budgets</button>
+          </div>
+          <div id="mockTabBoard" class="mock-tabpanel"></div>
+          <div id="mockTabBudgets" class="mock-tabpanel" style="display:none;"></div>
+        </div>
+
+        <div class="mock-rail" id="mockPicksRail">
+          <h4>Picks</h4>
+          <div class="mock-picks-ticker" id="mockPicksTicker"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="clock-banner">
+    <div>
+      <div class="label">On the clock (nominates next)</div>
+      <div class="team-name" id="onClockName">—</div>
+    </div>
+    <div class="nav-btns">
+      <button id="prevClock">◀ Prev</button>
+      <button id="nextClock">Next ▶</button>
+    </div>
+  </div>
+
+  <div class="stat-tiles" id="statTiles"></div>
+  <div id="runAlertBanner"></div>
+  <div class="panel" id="posPacePanel">
+    <h2>Positional Spend Pace <span class="hint">$ spent so far vs. expected share of the budget</span></h2>
+    <div id="posPaceBody"></div>
+  </div>
+
+  <div class="layout">
+    <div class="sticky">
+      <div class="panel" id="strategyPanel">
+        <h2>My Strategy <span class="hint">personal bid discipline</span></h2>
+        <div class="form-row" style="margin-bottom:6px;">
+          <label>Personal spend cap — DL / LB / DB / DST ($ each)</label>
+          <div style="display:flex; gap:6px;">
+            <input type="number" id="capDL" min="0" step="1" style="width:100%;" title="DL cap">
+            <input type="number" id="capLB" min="0" step="1" style="width:100%;" title="LB cap">
+            <input type="number" id="capDB" min="0" step="1" style="width:100%;" title="DB cap">
+            <input type="number" id="capDST" min="0" step="1" style="width:100%;" title="DST cap">
+          </div>
+          <div class="hint" style="margin-top:4px; font-size:11px; color:var(--text-dim);">Real 2024-25 draft data shows this league barely spends on IDP/DST (DL/DB avg ~$1.40, LB ~$2, DST ~$1.50 — rarely above $6-7). These caps are a guardrail against getting baited into a rare bidding war; the Bid Assistant will flag PASS past these caps no matter what the market value says.</div>
+        </div>
+        <div class="hint" style="font-size:11.5px; color:var(--good); margin-top:8px;">QB values are already re-priced for the OP (Offensive Player) utility slot — a Superflex-style slot eligible for QB/RB/WR/TE — and the recommendation bands are widened for elite QBs — expect (and be ready to pay) a real premium at the top of the QB market.</div>
+      </div>
+
+      <div class="panel">
+        <h2>Nominate / Bid Assistant <span class="hint">search &amp; select</span></h2>
+        <div class="form-row">
+          <label for="playerSearch">Player</label>
+          <input type="text" id="playerSearch" placeholder="Type a player name…" autocomplete="off">
+          <div class="autocomplete-list" id="acList"></div>
+        </div>
+        <div id="selectedPlayerCard"></div>
+
+        <div class="form-row">
+          <label for="currentBid">Current highest bid ($)</label>
+          <input type="number" id="currentBid" min="1" step="1" placeholder="e.g. 38">
+        </div>
+        <div id="recBanner"></div>
+
+        <hr style="border:none; border-top:1px solid var(--panel-border); margin:12px 0;">
+
+        <div class="form-row">
+          <label for="winningTeam">Winning team</label>
+          <select id="winningTeam"></select>
+        </div>
+        <div class="form-row">
+          <label for="winPrice">Final price ($)</label>
+          <input type="number" id="winPrice" min="1" step="1" placeholder="e.g. 42">
+        </div>
+        <div class="form-row">
+          <label for="slotOverride">Roster slot</label>
+          <select id="slotOverride"></select>
+          <div class="suggestion" id="slotSuggestion" style="font-size:11.5px; color:var(--accent); margin-top:3px;"></div>
+        </div>
+        <div class="error-msg" id="formError"></div>
+        <button class="primary-btn" id="logPickBtn">Log Winning Bid</button>
+        <button class="secondary-btn" id="undoBtn" style="width:100%; margin-top:8px;">Undo Last Pick</button>
+        <div class="io-row">
+          <button class="secondary-btn" id="exportBtn">⬇ Export JSON</button>
+          <button class="secondary-btn" id="importBtn">⬆ Import JSON</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json" style="display:none;">
+        <div class="cloud-status" id="cloudStatus">○ Cloud sync not configured</div>
+      </div>
+
+      <div class="panel">
+        <h2>Budget Plan <span class="hint">for my team, updates live</span></h2>
+        <div id="budgetPlanBody"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Nomination Helper <span class="hint">who to put up next</span></h2>
+        <div id="nominationHelperBody"></div>
+      </div>
+
+      <div class="panel">
+        <details class="methodology" id="methodologyPanel">
+          <summary>How market values &amp; inflation are calculated</summary>
+          <p><b>Base value is now anchored to this league's own real auction history</b>, not just external market blends. We pulled the actual ESPN Draft Recap prices for every pick in the 2024 and 2025 seasons (420 picks total), excluded the one keeper pick per team per year (each team gets to retain a player from the prior year's roster at last year's price, which isn't a real market bid), and used the remaining 409 clean picks as ground truth:</p>
+          <ul>
+            <li><b>Real per-position budget shares</b> (2-year average, clean picks only): WR 36.4%, RB 35.7%, QB 19.0%, TE 5.2%, LB 1.6%, DL 0.7%, DST 0.5%, DB 0.5%, K 0.4%. Every position's dollar total in the pool is rescaled so the full player pool balances against these real shares of the $3,000 league budget (10 teams &times; $300), instead of a generic external blend.</li>
+            <li><b>Any player who actually appeared in one of those 420 real picks has their base value overridden with their real weighted price</b> (65% weight on their 2025 price, 35% on 2024, when both exist) &mdash; 229 players in the current pool got a real-price override this way. Everyone else (players new to the league, or who didn't appear in the last two drafts) keeps a value from the rescaled model above.</li>
+            <li><b>QB</b>: real data shows QB1 topping out around $65&ndash;69 (Josh Allen, Lamar Jackson) even with the OP utility slot in play &mdash; not the $90&ndash;98 Superflex-style premium an earlier version of this sheet assumed. The OP slot does add some lift over a standard single-QB league, but this league's real bidding never treated it like true Superflex.</li>
+            <li><b>DL/LB/DB/DST (IDP) turned out to be the biggest correction</b>: an earlier version of this sheet assumed IDP/DST combined for ~24% of budget share, on the theory that 5 IDP-eligible slots (DL, LB, DB, 2×DP flex) would drive real premiums. Real history says otherwise &mdash; combined IDP is only ~2.8% of actual spend, and DST just ~0.5%. Actual per-position stats: DL avg $1.40/max $6, LB avg $2.07/max $7, DB avg $1.35/max $5 (Travis Hunter, who's dual-eligible at WR and DB in this pool, is the one real outlier at $15), DST avg $1.48/max $4. This league is not paying an IDP premium &mdash; if anything it's routinely leaving IDP/DST on the table for $1.</li>
+          </ul>
+          <p>Hover any "Base $" cell (or check the Bid Assistant panel once a player is selected) to see the player's value; players with a real-history override are priced directly from what this league actually paid for them the last two years.</p>
+          <p><b>Personal spend caps</b> (My Strategy panel): DL/LB/DB/DST default to a personal ceiling ($5 for DL/DB, $6 for LB, $4 for DST) set just above the real historical max for each position &mdash; not because this league overbids IDP (it doesn't), but as a guardrail against getting drawn into the rare outlier bidding war. The Bid Assistant will flag PASS the moment a bid would cross that number for your team. Edit or remove the caps any time.</p>
+          <p><b>Mock draft opponent AI</b>: Mock Draft mode auto-simulates the whole draft, and all 10 teams (including your own seat) now bid using personality profiles built from each real manager's own 2024&ndash;2025 bidding history &mdash; which positions they actually paid up for relative to the league average (<i>posAffinity</i>), whether they tend to win bidding wars or land bargains (<i>aggression</i>), and whether they concentrate spend on 1&ndash;2 studs or spread it evenly (<i>starHunter</i>). This also drives which slot each team tends to nominate for. It's a real-data-informed heuristic, not a prediction &mdash; treat mock draft results as a plausible rehearsal, not a forecast of what your actual league mates will do.</p>
+          <p><b>FF Rank column</b>: positional ranks from The Fantasy Footballers' 2026 Draft Rankings (Andy/Jason/Mike/Clips consensus) are shown alongside for QB/RB/WR/TE as an independent cross-check &mdash; these ranks don't feed into the $ value math at all, they're purely a second opinion to sanity-check against. When it and our $ model disagree by 8+ spots within a position, you'll see a &#9650;/&#9660; badge: an up-arrow (green) means the Fantasy Footballers rank the player notably better than our value model does (possible buy-low), a down-arrow (orange) means the opposite (possible overvalued by our model). ~60 deep bench/waiver players that only appeared in the Fantasy Footballers list (not ESPN's top 300) were added to the pool at a flat $1 floor value.</p>
+          <p><b>Live inflation</b> recalculates as picks are logged: <code>multiplier = (money left in the league − $1×slots left) / (base value left in the pool − $1×slots left)</code>. If teams are overspending vs. the sheet, the multiplier rises above 1.0 and every remaining player's target price is bumped up accordingly (and vice versa). This is the standard auction-inflation formula used by most auction tools.</p>
+          <p>Treat base $ values as a reasonable starting anchor, not gospel &mdash; real rooms deviate. Keeper picks were excluded from the historical calibration using the league's actual keeper announcements (18 of the 20 team-year keepers across 2024&ndash;2025 confirmed by name and price; NUTZ's and TB12's 2024 keeper couldn't be pinned down from the record and were left in, so those two team-years may carry a small amount of keeper-discount noise). The live inflation adjustment and your personal caps are what keep recommendations honest as your specific draft unfolds.</p>
+          <p><b>Cloud sync</b>: every logged pick, undo, or cap change is automatically saved to a free Firebase database in the background (see the status line under Log Pick / Export). If the page crashes or you reload, it reloads your draft-in-progress automatically instead of starting blank. Export/Import JSON still work exactly as before as a manual backup/portability option.</p>
+        </details>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Cheatsheet <span class="hint" id="csCount"></span></h2>
+        <div class="cs-controls">
+          <input type="text" id="csSearch" placeholder="Search player…">
+          <button class="pos-chip active" data-pos="ALL">All</button>
+          <button class="pos-chip" data-pos="QB">QB</button>
+          <button class="pos-chip" data-pos="RB">RB</button>
+          <button class="pos-chip" data-pos="WR">WR</button>
+          <button class="pos-chip" data-pos="TE">TE</button>
+          <button class="pos-chip" data-pos="K">K</button>
+          <button class="pos-chip" data-pos="DL">DL</button>
+          <button class="pos-chip" data-pos="LB">LB</button>
+          <button class="pos-chip" data-pos="DB">DB</button>
+          <button class="pos-chip" data-pos="DST">DST</button>
+          <label style="font-size:12px; color:var(--text-dim); display:flex; align-items:center; gap:5px; margin-left:auto;">
+            <input type="checkbox" id="hideDrafted"> Hide drafted
+          </label>
+        </div>
+        <div class="cs-scroll">
+          <table class="cs-table" id="csTable">
+            <thead>
+              <tr>
+                <th data-sort="rank">Rank</th>
+                <th data-sort="name">Player</th>
+                <th data-sort="pos">Pos</th>
+                <th>Team</th>
+                <th>Bye</th>
+                <th data-sort="value">Base $</th>
+                <th data-sort="adj">Live $</th>
+                <th data-sort="ffRank" title="The Fantasy Footballers Draft Rankings — positional rank">FF Rank</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="csBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="teams-grid" id="teamsGrid"></div>
+
+      <div class="panel">
+        <div class="log-actions">
+          <h2 style="margin:0;">Draft Log <span class="hint">a.k.a. the value leaderboard</span></h2>
+          <span id="logCount" style="color:var(--text-dim); font-size:12px;"></span>
+        </div>
+        <div class="cs-controls" style="margin-bottom:10px;">
+          <button class="pos-chip logsort-chip active" data-logsort="recent">Most Recent</button>
+          <button class="pos-chip logsort-chip" data-logsort="bargain">Best Value (Bargains)</button>
+          <button class="pos-chip logsort-chip" data-logsort="overpay">Worst Value (Overpays)</button>
+        </div>
+        <table class="log-table" id="logTable">
+          <thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Team</th><th>Slot</th><th>Price</th><th>Base $</th><th title="Price paid minus base value -- negative (green) is a bargain, positive (red) is an overpay">Surplus</th><th></th></tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+        <div class="empty-state" id="logEmpty">No picks logged yet.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="presentationView" class="presentation-view">
+  <button class="theme-btn" id="presentationExitBtn" style="position:absolute; top:20px; right:24px;">✕ Exit</button>
+  <div class="pres-clock" id="presClock">—</div>
+  <div class="pres-player" id="presPlayer">Select a player to see it here</div>
+  <div class="pres-meta" id="presMeta"></div>
+  <div class="pres-rec" id="presRec"></div>
+</div>
+
+<script>
+const PLAYERS_RAW = [{"id":1,"name":"Josh Allen","pos":"QB","team":"BUF","bye":7,"value":67,"yahooAvg":31.6,"yahooProj":28,"espnLiveSalary":29.6,"status":null,"dsMarket":41,"dsAuction":46,"ffRank":1,"rank":1},{"id":2,"name":"Lamar Jackson","pos":"QB","team":"BAL","bye":13,"value":65,"yahooAvg":17.3,"yahooProj":14,"espnLiveSalary":15.7,"status":null,"dsMarket":32,"dsAuction":34,"ffRank":2,"rank":4},{"id":3,"name":"Drake Maye","pos":"QB","team":"NE","bye":11,"value":37,"yahooAvg":11,"yahooProj":7,"espnLiveSalary":11.9,"status":null,"dsMarket":29,"dsAuction":32,"ffRank":6,"rank":32},{"id":4,"name":"Jayden Daniels","pos":"QB","team":"WAS","bye":7,"value":17,"yahooAvg":7.2,"yahooProj":7,"espnLiveSalary":10.9,"status":null,"dsMarket":26,"dsAuction":30,"ffRank":4,"rank":67},{"id":5,"name":"Jalen Hurts","pos":"QB","team":"PHI","bye":10,"value":43,"yahooAvg":6.3,"yahooProj":7,"espnLiveSalary":10.5,"status":null,"dsMarket":26,"dsAuction":29,"ffRank":3,"rank":26},{"id":6,"name":"Joe Burrow","pos":"QB","team":"CIN","bye":6,"value":56,"yahooAvg":10,"yahooProj":7,"espnLiveSalary":8.8,"status":null,"dsMarket":22,"dsAuction":28,"ffRank":5,"rank":14},{"id":7,"name":"Jaxson Dart","pos":"QB","team":"NYG","bye":8,"value":25,"yahooAvg":3.1,"yahooProj":2,"espnLiveSalary":5.4,"status":null,"dsMarket":16,"dsAuction":21,"ffRank":7,"rank":49},{"id":33,"name":"Jahmyr Gibbs","pos":"RB","team":"DET","bye":6,"value":66,"yahooAvg":73.4,"yahooProj":64,"espnLiveSalary":64.2,"status":null,"dsMarket":42,"dsAuction":42,"ffRank":1,"rank":2},{"id":37,"name":"Bijan Robinson","pos":"RB","team":"ATL","bye":11,"value":66,"yahooAvg":72.2,"yahooProj":62,"espnLiveSalary":62.4,"status":null,"dsMarket":42,"dsAuction":41,"ffRank":2,"rank":3},{"id":8,"name":"Caleb Williams","pos":"QB","team":"CHI","bye":10,"value":19,"yahooAvg":3.5,"yahooProj":5,"espnLiveSalary":4.3,"status":null,"dsMarket":16,"dsAuction":23,"ffRank":9,"rank":63},{"id":40,"name":"Ja'Marr Chase","pos":"WR","team":"CIN","bye":6,"value":61,"yahooAvg":65.4,"yahooProj":60,"espnLiveSalary":57.6,"status":null,"dsMarket":37,"dsAuction":38,"ffRank":1,"rank":10},{"id":43,"name":"Puka Nacua","pos":"WR","team":"LAR","bye":11,"value":62,"yahooAvg":62.7,"yahooProj":59,"espnLiveSalary":57.8,"status":"Q","dsMarket":35,"dsAuction":38,"ffRank":2,"rank":9},{"id":9,"name":"Dak Prescott","pos":"QB","team":"DAL","bye":14,"value":18,"yahooAvg":3.4,"yahooProj":3,"espnLiveSalary":5.1,"status":null,"dsMarket":15,"dsAuction":22,"ffRank":10,"rank":65},{"id":46,"name":"Jaxon Smith-Njigba","pos":"WR","team":"SEA","bye":11,"value":3,"yahooAvg":59.8,"yahooProj":58,"espnLiveSalary":54.8,"status":null,"dsMarket":36,"dsAuction":36,"ffRank":3,"rank":138},{"id":49,"name":"Christian McCaffrey","pos":"RB","team":"SF","bye":8,"value":65,"yahooAvg":60.9,"yahooProj":58,"espnLiveSalary":52.6,"status":"Q","dsMarket":36,"dsAuction":36,"ffRank":3,"rank":5},{"id":52,"name":"Jonathan Taylor","pos":"RB","team":"IND","bye":13,"value":55,"yahooAvg":58.4,"yahooProj":57,"espnLiveSalary":51.2,"status":null,"dsMarket":40,"dsAuction":35,"ffRank":5,"rank":15},{"id":55,"name":"Amon-Ra St. Brown","pos":"WR","team":"DET","bye":6,"value":64,"yahooAvg":55.8,"yahooProj":58,"espnLiveSalary":52.2,"status":null,"dsMarket":35,"dsAuction":34,"ffRank":4,"rank":7},{"id":309,"name":"Jordyn Brooks","pos":"LB","team":"MIA","bye":6,"value":1,"rank":217},{"id":10,"name":"Justin Herbert","pos":"QB","team":"LAC","bye":7,"value":24,"yahooAvg":3.8,"yahooProj":5,"espnLiveSalary":3.4,"status":null,"dsMarket":16,"dsAuction":23,"ffRank":11,"rank":53},{"id":59,"name":"CeeDee Lamb","pos":"WR","team":"DAL","bye":14,"value":64,"yahooAvg":52.6,"yahooProj":52,"espnLiveSalary":47.5,"status":null,"dsMarket":32,"dsAuction":32,"ffRank":5,"rank":8},{"id":62,"name":"De'Von Achane","pos":"RB","team":"MIA","bye":6,"value":39,"yahooAvg":43.5,"yahooProj":42,"espnLiveSalary":45.6,"status":null,"dsMarket":35,"dsAuction":26,"ffRank":6,"rank":30},{"id":65,"name":"Justin Jefferson","pos":"WR","team":"MIN","bye":6,"value":57,"yahooAvg":48.5,"yahooProj":46,"espnLiveSalary":46.3,"status":null,"dsMarket":28,"dsAuction":30,"ffRank":7,"rank":12},{"id":68,"name":"James Cook III","pos":"RB","team":"BUF","bye":7,"value":53,"yahooAvg":53.4,"yahooProj":50,"espnLiveSalary":44,"status":null,"dsMarket":30,"dsAuction":31,"ffRank":4,"rank":17},{"id":11,"name":"Trevor Lawrence","pos":"QB","team":"JAX","bye":7,"value":15,"yahooAvg":2.5,"yahooProj":3,"espnLiveSalary":3.9,"status":null,"dsMarket":16,"dsAuction":23,"ffRank":8,"rank":72},{"id":310,"name":"Jack Campbell","pos":"LB","team":"DET","bye":6,"value":2,"rank":193},{"id":73,"name":"Drake London","pos":"WR","team":"ATL","bye":11,"value":50,"yahooAvg":40.5,"yahooProj":41,"espnLiveSalary":37,"status":null,"dsMarket":28,"dsAuction":27,"ffRank":6,"rank":21},{"id":74,"name":"Ashton Jeanty","pos":"RB","team":"LV","bye":13,"value":65,"yahooAvg":47.6,"yahooProj":43,"espnLiveSalary":38.6,"status":null,"dsMarket":25,"dsAuction":27,"ffRank":9,"rank":6},{"id":82,"name":"Saquon Barkley","pos":"RB","team":"PHI","bye":10,"value":54,"yahooAvg":46.9,"yahooProj":48,"espnLiveSalary":37.6,"status":null,"dsMarket":27,"dsAuction":27,"ffRank":12,"rank":16},{"id":279,"name":"Myles Garrett","pos":"DL","team":"LAR","bye":11,"value":1,"rank":218},{"id":12,"name":"Brock Purdy","pos":"QB","team":"SF","bye":8,"value":28,"yahooAvg":1.4,"yahooProj":2,"espnLiveSalary":3.3,"status":null,"dsMarket":16,"dsAuction":23,"ffRank":13,"rank":43},{"id":85,"name":"Derrick Henry","pos":"RB","team":"BAL","bye":13,"value":59,"yahooAvg":37.6,"yahooProj":37,"espnLiveSalary":33.8,"status":null,"dsMarket":32,"dsAuction":29,"ffRank":8,"rank":11},{"id":88,"name":"Chase Brown","pos":"RB","team":"CIN","bye":6,"value":4,"yahooAvg":44.9,"yahooProj":42,"espnLiveSalary":32.2,"status":null,"dsMarket":27,"dsAuction":24,"ffRank":10,"rank":125},{"id":71,"name":"Jeremiyah Love","pos":"RB","team":"ARI","bye":14,"value":35,"yahooAvg":30.2,"yahooProj":30,"espnLiveSalary":37.8,"status":"Q","dsMarket":29,"dsAuction":22,"ffRank":14,"rank":35},{"id":91,"name":"Kenneth Walker III","pos":"RB","team":"KC","bye":5,"value":38,"yahooAvg":40.8,"yahooProj":44,"espnLiveSalary":31.1,"status":null,"dsMarket":25,"dsAuction":25,"ffRank":7,"rank":31},{"id":99,"name":"Omarion Hampton","pos":"RB","team":"LAC","bye":7,"value":42,"yahooAvg":43.6,"yahooProj":38,"espnLiveSalary":33.6,"status":null,"dsMarket":23,"dsAuction":23,"ffRank":11,"rank":27},{"id":311,"name":"Carson Schwesinger","pos":"LB","team":"CLE","bye":11,"value":1,"rank":219},{"id":13,"name":"Bo Nix","pos":"QB","team":"DEN","bye":10,"value":22,"yahooAvg":1.4,"yahooProj":2,"espnLiveSalary":4,"status":null,"dsMarket":13,"dsAuction":18,"ffRank":12,"rank":57},{"id":79,"name":"Trey McBride","pos":"TE","team":"ARI","bye":14,"value":26,"yahooAvg":31.5,"yahooProj":25,"espnLiveSalary":34.8,"status":null,"dsMarket":26,"dsAuction":23,"ffRank":2,"rank":47},{"id":103,"name":"Brock Bowers","pos":"TE","team":"LV","bye":13,"value":8,"yahooAvg":36.5,"yahooProj":36,"espnLiveSalary":30.5,"status":null,"dsMarket":24,"dsAuction":24,"ffRank":1,"rank":99},{"id":280,"name":"Aidan Hutchinson","pos":"DL","team":"DET","bye":6,"value":1,"rank":220},{"id":14,"name":"Kyler Murray","pos":"QB","team":"MIN","bye":6,"value":30,"yahooAvg":1.3,"yahooProj":2,"espnLiveSalary":1.5,"status":null,"dsMarket":15,"dsAuction":22,"ffRank":19,"rank":40},{"id":76,"name":"Rashee Rice","pos":"WR","team":"KC","bye":5,"value":6,"yahooAvg":24,"yahooProj":21,"espnLiveSalary":33,"status":null,"dsMarket":25,"dsAuction":25,"ffRank":14,"rank":113},{"id":107,"name":"Nico Collins","pos":"WR","team":"HOU","bye":8,"value":57,"yahooAvg":36.1,"yahooProj":35,"espnLiveSalary":28.1,"status":null,"dsMarket":21,"dsAuction":24,"ffRank":11,"rank":13},{"id":445,"name":"Cameron Skattebo","pos":"RB","team":"NYG","bye":8,"value":30,"dsMarket":18,"dsAuction":15,"rank":41},{"id":115,"name":"A.J. Brown","pos":"WR","team":"NE","bye":11,"value":52,"yahooAvg":29.5,"yahooProj":33,"espnLiveSalary":28.5,"status":null,"dsMarket":19,"dsAuction":23,"ffRank":8,"rank":18},{"id":312,"name":"Ernest Jones IV","pos":"LB","team":"SEA","bye":11,"value":2,"rank":194},{"id":15,"name":"Patrick Mahomes","pos":"QB","team":"KC","bye":5,"value":52,"yahooAvg":2.3,"yahooProj":2,"espnLiveSalary":3.7,"status":"Q","dsMarket":12,"dsAuction":17,"ffRank":18,"rank":19},{"id":121,"name":"George Pickens","pos":"WR","team":"DAL","bye":14,"value":17,"yahooAvg":32,"yahooProj":34,"espnLiveSalary":26.5,"status":null,"dsMarket":19,"dsAuction":22,"ffRank":10,"rank":68},{"id":124,"name":"Josh Jacobs","pos":"RB","team":"GB","bye":11,"value":50,"yahooAvg":25.4,"yahooProj":20,"espnLiveSalary":26.1,"status":"Q","dsMarket":23,"dsAuction":21,"ffRank":13,"rank":22},{"id":281,"name":"Maxx Crosby","pos":"DL","team":"LV","bye":13,"value":5,"rank":119},{"id":339,"name":"Travis Hunter","pos":"DB","team":"JAX","bye":7,"value":15,"rank":73},{"id":95,"name":"Breece Hall","pos":"RB","team":"NYJ","bye":13,"value":41,"yahooAvg":20.5,"yahooProj":29,"espnLiveSalary":24,"status":null,"dsMarket":24,"dsAuction":19,"ffRank":17,"rank":28},{"id":118,"name":"Chris Olave","pos":"WR","team":"NO","bye":8,"value":15,"yahooAvg":23.7,"yahooProj":23,"espnLiveSalary":24,"status":null,"dsMarket":20,"dsAuction":20,"ffRank":9,"rank":74},{"id":313,"name":"Foyesade Oluokun","pos":"LB","team":"JAX","bye":7,"value":2,"rank":195},{"id":16,"name":"Matthew Stafford","pos":"QB","team":"LAR","bye":11,"value":4,"yahooAvg":1.8,"yahooProj":2,"espnLiveSalary":5,"status":null,"dsMarket":9,"dsAuction":13,"ffRank":16,"rank":126},{"id":127,"name":"Javonte Williams","pos":"RB","team":"DAL","bye":14,"value":4,"yahooAvg":22.3,"yahooProj":20,"espnLiveSalary":23,"status":null,"dsMarket":18,"dsAuction":17,"ffRank":18,"rank":127},{"id":131,"name":"Malik Nabers","pos":"WR","team":"NYG","bye":8,"value":18,"yahooAvg":25,"yahooProj":32,"espnLiveSalary":22.6,"status":"Q","dsMarket":17,"dsAuction":19,"ffRank":12,"rank":66},{"id":282,"name":"Will Anderson Jr.","pos":"DL","team":"HOU","bye":8,"value":1,"rank":221},{"id":340,"name":"Devon Witherspoon","pos":"DB","team":"SEA","bye":11,"value":1,"rank":222},{"id":17,"name":"Geno Smith","pos":"QB","team":"NYJ","bye":13,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":7,"dsAuction":8,"ffRank":29,"rank":139},{"id":111,"name":"Garrett Wilson","pos":"WR","team":"NYJ","bye":13,"value":32,"yahooAvg":13.9,"yahooProj":17,"espnLiveSalary":23.5,"status":null,"dsMarket":17,"dsAuction":17,"ffRank":13,"rank":38},{"id":143,"name":"DeVonta Smith","pos":"WR","team":"PHI","bye":10,"value":14,"yahooAvg":24.6,"yahooProj":31,"espnLiveSalary":19.7,"status":"Q","dsMarket":14,"dsAuction":17,"ffRank":18,"rank":78},{"id":150,"name":"Kyren Williams","pos":"RB","team":"LAR","bye":11,"value":51,"yahooAvg":25.2,"yahooProj":26,"espnLiveSalary":20.6,"status":null,"dsMarket":17,"dsAuction":16,"ffRank":15,"rank":20},{"id":314,"name":"Roquan Smith","pos":"LB","team":"BAL","bye":13,"value":3,"rank":140},{"id":18,"name":"Jacoby Brissett","pos":"QB","team":"ARI","bye":14,"value":7,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":7,"dsAuction":8,"ffRank":28,"rank":106},{"id":135,"name":"Tetairoa McMillan","pos":"WR","team":"CAR","bye":5,"value":9,"yahooAvg":17.6,"yahooProj":17,"espnLiveSalary":19.4,"status":null,"dsMarket":15,"dsAuction":15,"ffRank":19,"rank":96},{"id":139,"name":"Zay Flowers","pos":"WR","team":"BAL","bye":13,"value":14,"yahooAvg":16.7,"yahooProj":26,"espnLiveSalary":18.9,"status":null,"dsMarket":15,"dsAuction":18,"ffRank":16,"rank":79},{"id":157,"name":"Cam Skattebo","pos":"RB","team":"NYG","bye":8,"value":3,"yahooAvg":16.8,"yahooProj":15,"espnLiveSalary":18.5,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":16,"rank":141},{"id":283,"name":"Arvell Reese","pos":"DL","team":"NYG","bye":8,"value":2,"rank":196},{"id":341,"name":"Marlon Humphrey","pos":"DB","team":"BAL","bye":13,"value":1,"rank":223},{"id":446,"name":"Cameron Ward","pos":"QB","team":"TEN","bye":9,"value":7,"dsMarket":9,"dsAuction":11,"rank":107},{"id":19,"name":"Aaron Rodgers","pos":"QB","team":"PIT","bye":9,"value":6,"yahooAvg":1.1,"yahooProj":0,"espnLiveSalary":null,"status":null,"dsMarket":10,"dsAuction":10,"ffRank":27,"rank":114},{"id":154,"name":"Travis Etienne Jr.","pos":"RB","team":"NO","bye":8,"value":20,"yahooAvg":17.3,"yahooProj":17,"espnLiveSalary":16.5,"status":null,"dsMarket":15,"dsAuction":15,"ffRank":22,"rank":60},{"id":167,"name":"Emeka Egbuka","pos":"WR","team":"TB","bye":10,"value":1,"yahooAvg":14,"yahooProj":19,"espnLiveSalary":18.2,"status":"Q","dsMarket":13,"dsAuction":14,"ffRank":15,"rank":224},{"id":182,"name":"Tee Higgins","pos":"WR","team":"CIN","bye":6,"value":29,"yahooAvg":20.6,"yahooProj":27,"espnLiveSalary":12.6,"status":null,"dsMarket":12,"dsAuction":17,"ffRank":20,"rank":42},{"id":284,"name":"Nick Bosa","pos":"DL","team":"SF","bye":8,"value":1,"rank":225},{"id":315,"name":"Blake Cashman","pos":"LB","team":"MIN","bye":6,"value":3,"rank":142},{"id":342,"name":"Mike Sainristil","pos":"DB","team":"WAS","bye":7,"value":1,"rank":226},{"id":20,"name":"Jared Goff","pos":"QB","team":"DET","bye":6,"value":12,"yahooAvg":1.4,"yahooProj":2,"espnLiveSalary":1.6,"status":null,"dsMarket":10,"dsAuction":14,"ffRank":15,"rank":85},{"id":160,"name":"Quinshon Judkins","pos":"RB","team":"CLE","bye":11,"value":1,"yahooAvg":11.5,"yahooProj":12,"espnLiveSalary":15.7,"status":null,"dsMarket":14,"dsAuction":12,"ffRank":24,"rank":227},{"id":163,"name":"Bucky Irving","pos":"RB","team":"TB","bye":10,"value":44,"yahooAvg":11.6,"yahooProj":8,"espnLiveSalary":14.7,"status":null,"dsMarket":14,"dsAuction":12,"ffRank":19,"rank":25},{"id":171,"name":"Davante Adams","pos":"WR","team":"LAR","bye":11,"value":37,"yahooAvg":11.6,"yahooProj":9,"espnLiveSalary":15.5,"status":null,"dsMarket":12,"dsAuction":14,"ffRank":28,"rank":33},{"id":175,"name":"Ladd McConkey","pos":"WR","team":"LAC","bye":7,"value":48,"yahooAvg":13.9,"yahooProj":17,"espnLiveSalary":14.9,"status":null,"dsMarket":12,"dsAuction":14,"ffRank":21,"rank":23},{"id":193,"name":"Colston Loveland","pos":"TE","team":"CHI","bye":10,"value":3,"yahooAvg":18.2,"yahooProj":18,"espnLiveSalary":13.5,"status":null,"dsMarket":12,"dsAuction":17,"ffRank":3,"rank":143},{"id":316,"name":"Quay Walker","pos":"LB","team":"LV","bye":13,"value":1,"rank":228},{"id":21,"name":"Tyler Shough","pos":"QB","team":"NO","bye":8,"value":5,"yahooAvg":1.2,"yahooProj":1,"espnLiveSalary":1.1,"status":null,"dsMarket":9,"dsAuction":13,"ffRank":14,"rank":120},{"id":179,"name":"Terry McLaurin","pos":"WR","team":"WAS","bye":7,"value":23,"yahooAvg":10.2,"yahooProj":17,"espnLiveSalary":11.9,"status":null,"dsMarket":11,"dsAuction":13,"ffRank":30,"rank":56},{"id":185,"name":"Jaylen Waddle","pos":"WR","team":"DEN","bye":10,"value":12,"yahooAvg":14,"yahooProj":24,"espnLiveSalary":11.6,"status":"Q","dsMarket":11,"dsAuction":15,"ffRank":17,"rank":86},{"id":197,"name":"Tyler Warren","pos":"TE","team":"IND","bye":13,"value":10,"yahooAvg":12.7,"yahooProj":15,"espnLiveSalary":12.8,"status":null,"dsMarket":10,"dsAuction":14,"ffRank":4,"rank":92},{"id":285,"name":"Jeffery Simmons","pos":"DL","team":"TEN","bye":9,"value":1,"rank":229},{"id":317,"name":"Zack Baun","pos":"LB","team":"PHI","bye":10,"value":6,"rank":115},{"id":343,"name":"Cooper DeJean","pos":"DB","team":"PHI","bye":10,"value":1,"rank":230},{"id":22,"name":"Jordan Love","pos":"QB","team":"GB","bye":11,"value":6,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":0.8,"status":null,"dsMarket":9,"dsAuction":13,"ffRank":21,"rank":116},{"id":23,"name":"Tua Tagovailoa","pos":"QB","team":"ATL","bye":11,"value":19,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":6,"dsAuction":6,"ffRank":31,"rank":64},{"id":189,"name":"Jameson Williams","pos":"WR","team":"DET","bye":6,"value":13,"yahooAvg":6.6,"yahooProj":10,"espnLiveSalary":10.1,"status":null,"dsMarket":12,"dsAuction":13,"ffRank":24,"rank":82},{"id":209,"name":"Luther Burden III","pos":"WR","team":"CHI","bye":10,"value":12,"yahooAvg":10.6,"yahooProj":16,"espnLiveSalary":7.7,"status":"Q","dsMarket":9,"dsAuction":13,"ffRank":25,"rank":87},{"id":223,"name":"D'Andre Swift","pos":"RB","team":"CHI","bye":10,"value":27,"yahooAvg":11.9,"yahooProj":17,"espnLiveSalary":8.2,"status":null,"dsMarket":10,"dsAuction":12,"ffRank":20,"rank":45},{"id":286,"name":"Christian Elliss","pos":"DL","team":"NE","bye":11,"value":1,"rank":231},{"id":318,"name":"Nick Bolton","pos":"LB","team":"KC","bye":5,"value":1,"rank":232},{"id":344,"name":"Paulson Adebo","pos":"DB","team":"NYG","bye":8,"value":1,"rank":233},{"id":24,"name":"C.J. Stroud","pos":"QB","team":"HOU","bye":8,"value":10,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":0.4,"status":null,"dsMarket":10,"dsAuction":12,"ffRank":22,"rank":93},{"id":25,"name":"Baker Mayfield","pos":"QB","team":"TB","bye":10,"value":33,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":1.1,"status":null,"dsMarket":8,"dsAuction":12,"ffRank":17,"rank":36},{"id":205,"name":"Rome Odunze","pos":"WR","team":"CHI","bye":10,"value":8,"yahooAvg":5.3,"yahooProj":11,"espnLiveSalary":8.4,"status":null,"dsMarket":9,"dsAuction":12,"ffRank":32,"rank":100},{"id":212,"name":"DJ Moore","pos":"WR","team":"BUF","bye":7,"value":26,"yahooAvg":6.8,"yahooProj":13,"espnLiveSalary":8.7,"status":"Q","dsMarket":8,"dsAuction":11,"ffRank":27,"rank":48},{"id":221,"name":"Bhayshul Tuten","pos":"RB","team":"JAX","bye":7,"value":10,"yahooAvg":9.2,"yahooProj":9,"espnLiveSalary":8,"status":null,"dsMarket":8,"dsAuction":9,"ffRank":21,"rank":94},{"id":228,"name":"David Montgomery","pos":"RB","team":"HOU","bye":8,"value":20,"yahooAvg":12,"yahooProj":13,"espnLiveSalary":7.7,"status":null,"dsMarket":8,"dsAuction":11,"ffRank":25,"rank":61},{"id":287,"name":"DeForest Buckner","pos":"DL","team":"IND","bye":13,"value":1,"rank":234},{"id":288,"name":"Derrick Brown","pos":"DL","team":"CAR","bye":5,"value":1,"rank":235},{"id":319,"name":"Fred Warner","pos":"LB","team":"SF","bye":8,"value":3,"rank":144},{"id":345,"name":"Jalen Ramsey","pos":"DB","team":"PIT","bye":9,"value":1,"rank":236},{"id":346,"name":"Kamari Lassiter","pos":"DB","team":"HOU","bye":8,"value":1,"rank":237},{"id":26,"name":"Daniel Jones","pos":"QB","team":"IND","bye":13,"value":1,"yahooAvg":1,"yahooProj":1,"espnLiveSalary":0.7,"status":null,"dsMarket":8,"dsAuction":11,"ffRank":25,"rank":238},{"id":27,"name":"Malik Willis","pos":"QB","team":"MIA","bye":6,"value":3,"yahooAvg":1.1,"yahooProj":2,"espnLiveSalary":0.3,"status":null,"dsMarket":8,"dsAuction":11,"ffRank":20,"rank":145},{"id":201,"name":"Carnell Tate","pos":"WR","team":"TEN","bye":9,"value":8,"yahooAvg":3.7,"yahooProj":5,"espnLiveSalary":8.6,"status":null,"dsMarket":8,"dsAuction":10,"ffRank":23,"rank":101},{"id":225,"name":"TreVeyon Henderson","pos":"RB","team":"NE","bye":11,"value":33,"yahooAvg":8.9,"yahooProj":7,"espnLiveSalary":7.8,"status":null,"dsMarket":6,"dsAuction":8,"ffRank":23,"rank":37},{"id":231,"name":"Jadarian Price","pos":"RB","team":"SEA","bye":11,"value":8,"yahooAvg":8.4,"yahooProj":6,"espnLiveSalary":8.2,"status":"Q","dsMarket":5,"dsAuction":7,"ffRank":26,"rank":102},{"id":259,"name":"Sam LaPorta","pos":"TE","team":"DET","bye":6,"value":20,"yahooAvg":4.5,"yahooProj":5,"espnLiveSalary":6.1,"status":null,"dsMarket":7,"dsAuction":10,"ffRank":8,"rank":62},{"id":265,"name":"Mike Evans","pos":"WR","team":"SF","bye":8,"value":40,"yahooAvg":6.7,"yahooProj":8,"espnLiveSalary":4.3,"status":null,"dsMarket":8,"dsAuction":12,"ffRank":29,"rank":29},{"id":270,"name":"Christian Watson","pos":"WR","team":"GB","bye":11,"value":11,"yahooAvg":5.8,"yahooProj":11,"espnLiveSalary":3.2,"status":null,"dsMarket":10,"dsAuction":14,"ffRank":22,"rank":90},{"id":289,"name":"Laiatu Latu","pos":"DL","team":"IND","bye":13,"value":1,"rank":239},{"id":290,"name":"Danielle Hunter","pos":"DL","team":"HOU","bye":8,"value":2,"rank":197},{"id":320,"name":"Jamien Sherwood","pos":"LB","team":"NYJ","bye":13,"value":1,"rank":240},{"id":347,"name":"Dax Hill","pos":"DB","team":"CIN","bye":6,"value":1,"rank":241},{"id":348,"name":"D.J. Reed","pos":"DB","team":"DET","bye":6,"value":1,"rank":242},{"id":354,"name":"Rams D/ST","pos":"DST","team":"LAR","bye":11,"value":2,"espnLiveSalary":3.7,"rank":198},{"id":355,"name":"Texans D/ST","pos":"DST","team":"HOU","bye":8,"value":2,"espnLiveSalary":3.5,"rank":199},{"id":28,"name":"Sam Darnold","pos":"QB","team":"SEA","bye":11,"value":1,"yahooAvg":1.2,"yahooProj":1,"espnLiveSalary":0.5,"status":null,"dsMarket":9,"dsAuction":10,"ffRank":24,"rank":243},{"id":29,"name":"Bryce Young","pos":"QB","team":"CAR","bye":5,"value":2,"yahooAvg":1.2,"yahooProj":1,"espnLiveSalary":0.3,"status":null,"dsMarket":9,"dsAuction":10,"ffRank":26,"rank":200},{"id":30,"name":"Deshaun Watson","pos":"QB","team":"CLE","bye":11,"value":11,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":5,"dsAuction":5,"ffRank":36,"rank":91},{"id":96,"name":"Tucker Kraft","pos":"TE","team":"GB","bye":11,"value":5,"yahooAvg":5.9,"yahooProj":5,"espnLiveSalary":3,"status":"Q","dsMarket":8,"dsAuction":12,"ffRank":6,"rank":121},{"id":234,"name":"Tony Pollard","pos":"RB","team":"TEN","bye":9,"value":10,"yahooAvg":3.6,"yahooProj":4,"espnLiveSalary":5,"status":null,"dsMarket":4,"dsAuction":6,"ffRank":34,"rank":95},{"id":237,"name":"Courtland Sutton","pos":"WR","team":"DEN","bye":10,"value":13,"yahooAvg":1.7,"yahooProj":2,"espnLiveSalary":4.9,"status":null,"dsMarket":7,"dsAuction":9,"ffRank":42,"rank":83},{"id":240,"name":"Michael Pittman Jr.","pos":"WR","team":"PIT","bye":9,"value":16,"yahooAvg":1.3,"yahooProj":2,"espnLiveSalary":4.2,"status":"Q","dsMarket":6,"dsAuction":8,"ffRank":38,"rank":69},{"id":243,"name":"Alec Pierce","pos":"WR","team":"IND","bye":13,"value":7,"yahooAvg":3.2,"yahooProj":2,"espnLiveSalary":4.1,"status":"PUP-P","dsMarket":8,"dsAuction":9,"ffRank":26,"rank":108},{"id":246,"name":"Marvin Harrison Jr.","pos":"WR","team":"ARI","bye":14,"value":36,"yahooAvg":3.5,"yahooProj":6,"espnLiveSalary":4.6,"status":null,"dsMarket":7,"dsAuction":10,"ffRank":35,"rank":34},{"id":249,"name":"DK Metcalf","pos":"WR","team":"PIT","bye":9,"value":22,"yahooAvg":2.4,"yahooProj":4,"espnLiveSalary":4.7,"status":"Q","dsMarket":7,"dsAuction":10,"ffRank":33,"rank":58},{"id":251,"name":"Jordyn Tyson","pos":"WR","team":"NO","bye":8,"value":7,"yahooAvg":2.2,"yahooProj":4,"espnLiveSalary":3.5,"status":"Q","dsMarket":6,"dsAuction":9,"ffRank":37,"rank":109},{"id":253,"name":"Kyle Pitts Sr.","pos":"TE","team":"ATL","bye":11,"value":6,"yahooAvg":3.4,"yahooProj":3,"espnLiveSalary":6.3,"status":null,"dsMarket":6,"dsAuction":8,"ffRank":9,"rank":117},{"id":256,"name":"Harold Fannin Jr.","pos":"TE","team":"CLE","bye":11,"value":5,"yahooAvg":3.7,"yahooProj":4,"espnLiveSalary":5,"status":null,"dsMarket":7,"dsAuction":10,"ffRank":5,"rank":122},{"id":267,"name":"Parker Washington","pos":"WR","team":"JAX","bye":7,"value":7,"yahooAvg":2.4,"yahooProj":8,"espnLiveSalary":3.3,"status":null,"dsMarket":7,"dsAuction":10,"ffRank":31,"rank":110},{"id":349,"name":"Taron Johnson","pos":"DB","team":"LV","bye":13,"value":1,"rank":244},{"id":350,"name":"Byron Murphy Jr.","pos":"DB","team":"MIN","bye":6,"value":1,"rank":245},{"id":356,"name":"Broncos D/ST","pos":"DST","team":"DEN","bye":10,"value":1,"espnLiveSalary":3.2,"rank":246},{"id":31,"name":"Fernando Mendoza","pos":"QB","team":"LV","bye":13,"value":1,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":0.2,"status":null,"dsMarket":8,"dsAuction":9,"ffRank":33,"rank":247},{"id":32,"name":"Cam Ward","pos":"QB","team":"TEN","bye":9,"value":2,"yahooAvg":1.3,"yahooProj":1,"espnLiveSalary":0.2,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":23,"rank":201},{"id":34,"name":"Brian Thomas Jr.","pos":"WR","team":"JAX","bye":7,"value":1,"yahooAvg":2.7,"yahooProj":5,"espnLiveSalary":2.7,"status":null,"dsMarket":6,"dsAuction":9,"ffRank":34,"rank":248},{"id":41,"name":"Rashod Bateman","pos":"WR","team":"BAL","bye":13,"value":4,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":5,"dsAuction":3,"ffRank":86,"rank":128},{"id":56,"name":"Jakobi Meyers","pos":"WR","team":"JAX","bye":7,"value":1,"yahooAvg":1.2,"yahooProj":2,"espnLiveSalary":1.6,"status":null,"dsMarket":6,"dsAuction":8,"ffRank":50,"rank":249},{"id":60,"name":"Wan'Dale Robinson","pos":"WR","team":"TEN","bye":9,"value":4,"yahooAvg":1.2,"yahooProj":2,"espnLiveSalary":1.7,"status":null,"dsMarket":4,"dsAuction":5,"ffRank":45,"rank":129},{"id":63,"name":"Josh Downs","pos":"WR","team":"IND","bye":13,"value":4,"yahooAvg":1.3,"yahooProj":3,"espnLiveSalary":1.6,"status":"Q","dsMarket":6,"dsAuction":8,"ffRank":43,"rank":130},{"id":66,"name":"Jordan Addison","pos":"WR","team":"MIN","bye":6,"value":1,"yahooAvg":1.1,"yahooProj":2,"espnLiveSalary":1.6,"status":null,"dsMarket":6,"dsAuction":9,"ffRank":40,"rank":250},{"id":75,"name":"Jaylen Warren","pos":"RB","team":"PIT","bye":9,"value":3,"yahooAvg":4.1,"yahooProj":5,"espnLiveSalary":2.9,"status":null,"dsMarket":5,"dsAuction":7,"ffRank":31,"rank":146},{"id":77,"name":"Rhamondre Stevenson","pos":"RB","team":"NE","bye":11,"value":8,"yahooAvg":3.3,"yahooProj":5,"espnLiveSalary":2.2,"status":null,"dsMarket":6,"dsAuction":8,"ffRank":30,"rank":103},{"id":80,"name":"Rico Dowdle","pos":"RB","team":"PIT","bye":9,"value":3,"yahooAvg":3.4,"yahooProj":3,"espnLiveSalary":2.3,"status":null,"dsMarket":4,"dsAuction":6,"ffRank":28,"rank":147},{"id":86,"name":"Chuba Hubbard","pos":"RB","team":"CAR","bye":5,"value":24,"yahooAvg":5.2,"yahooProj":2,"espnLiveSalary":1.9,"status":"Q","dsMarket":3,"dsAuction":4,"ffRank":29,"rank":54},{"id":92,"name":"George Kittle","pos":"TE","team":"SF","bye":8,"value":22,"yahooAvg":2.8,"yahooProj":2,"espnLiveSalary":2.8,"status":"PUP-P","dsMarket":6,"dsAuction":8,"ffRank":7,"rank":59},{"id":93,"name":"Brandon Aubrey","pos":"K","team":"DAL","bye":14,"value":2,"yahooAvg":4.6,"yahooProj":1,"espnLiveSalary":5.2,"status":null,"dsMarket":4,"dsAuction":5,"rank":202},{"id":104,"name":"Travis Kelce","pos":"TE","team":"KC","bye":5,"value":24,"yahooAvg":2.2,"yahooProj":2,"espnLiveSalary":2.4,"status":null,"dsMarket":4,"dsAuction":5,"ffRank":11,"rank":55},{"id":112,"name":"Jonathon Brooks","pos":"RB","team":"CAR","bye":5,"value":3,"yahooAvg":3.3,"yahooProj":4,"espnLiveSalary":1.9,"status":null,"dsMarket":4,"dsAuction":6,"ffRank":42,"rank":148},{"id":116,"name":"J.K. Dobbins","pos":"RB","team":"DEN","bye":10,"value":1,"yahooAvg":2.4,"yahooProj":3,"espnLiveSalary":1.8,"status":"Q","dsMarket":4,"dsAuction":6,"ffRank":32,"rank":251},{"id":132,"name":"Jayden Reed","pos":"WR","team":"GB","bye":11,"value":3,"yahooAvg":1.2,"yahooProj":2,"espnLiveSalary":1.1,"status":null,"dsMarket":6,"dsAuction":9,"ffRank":47,"rank":149},{"id":136,"name":"Makai Lemon","pos":"WR","team":"PHI","bye":10,"value":4,"yahooAvg":1.7,"yahooProj":2,"espnLiveSalary":1.8,"status":"Q","dsMarket":5,"dsAuction":7,"ffRank":48,"rank":131},{"id":140,"name":"Xavier Worthy","pos":"WR","team":"KC","bye":5,"value":13,"yahooAvg":1,"yahooProj":2,"espnLiveSalary":1.1,"status":"Q","dsMarket":6,"dsAuction":8,"ffRank":49,"rank":84},{"id":176,"name":"Quentin Johnston","pos":"WR","team":"LAC","bye":7,"value":4,"yahooAvg":1.4,"yahooProj":3,"espnLiveSalary":1.2,"status":null,"dsMarket":6,"dsAuction":9,"ffRank":36,"rank":132},{"id":183,"name":"Deebo Samuel Sr.","pos":"WR","team":"SF","bye":8,"value":15,"yahooAvg":1.4,"yahooProj":1,"espnLiveSalary":1.2,"status":null,"dsMarket":5,"dsAuction":7,"ffRank":60,"rank":75},{"id":186,"name":"Stefon Diggs","pos":"WR","team":"WAS","bye":7,"value":15,"yahooAvg":1.9,"yahooProj":3,"espnLiveSalary":1.7,"status":null,"dsMarket":5,"dsAuction":7,"ffRank":44,"rank":76},{"id":190,"name":"Chris Godwin Jr.","pos":"WR","team":"TB","bye":10,"value":1,"yahooAvg":1.9,"yahooProj":3,"espnLiveSalary":1.3,"status":null,"dsMarket":5,"dsAuction":7,"ffRank":39,"rank":252},{"id":226,"name":"Brian Robinson Jr.","pos":"RB","team":"ATL","bye":11,"value":16,"yahooAvg":12.5,"yahooProj":1,"espnLiveSalary":1,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":53,"rank":70},{"id":273,"name":"Matthew Golden","pos":"WR","team":"GB","bye":11,"value":2,"yahooAvg":1.2,"yahooProj":2,"espnLiveSalary":2.3,"status":null,"dsMarket":4,"dsAuction":6,"ffRank":56,"rank":203},{"id":276,"name":"Michael Wilson","pos":"WR","team":"ARI","bye":14,"value":4,"yahooAvg":1.7,"yahooProj":3,"espnLiveSalary":2.5,"status":null,"dsMarket":4,"dsAuction":6,"ffRank":41,"rank":133},{"id":357,"name":"Seahawks D/ST","pos":"DST","team":"SEA","bye":11,"value":1,"espnLiveSalary":2.4,"rank":253},{"id":35,"name":"Jalen Nailor","pos":"WR","team":"LV","bye":13,"value":3,"yahooAvg":1,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":62,"rank":150},{"id":36,"name":"LeQuint Allen","pos":"RB","team":"JAX","bye":7,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":76,"rank":151},{"id":38,"name":"Omar Cooper Jr.","pos":"WR","team":"NYJ","bye":13,"value":3,"yahooAvg":1.2,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":61,"rank":152},{"id":39,"name":"MarShawn Lloyd","pos":"RB","team":"GB","bye":11,"value":3,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":2,"dsAuction":1,"ffRank":63,"rank":153},{"id":42,"name":"Jaydon Blue","pos":"RB","team":"DAL","bye":14,"value":3,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":80,"rank":154},{"id":44,"name":"Jauan Jennings","pos":"WR","team":"MIN","bye":6,"value":3,"yahooAvg":1,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":84,"rank":155},{"id":45,"name":"George Holani","pos":"RB","team":"SEA","bye":11,"value":3,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":75,"rank":156},{"id":47,"name":"Ja'Kobi Lane","pos":"WR","team":"BAL","bye":13,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":0.1,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":72,"rank":157},{"id":48,"name":"Ty Johnson","pos":"RB","team":"BUF","bye":7,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":62,"rank":158},{"id":50,"name":"Tyjae Spears","pos":"RB","team":"TEN","bye":9,"value":1,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":0.2,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":43,"rank":254},{"id":51,"name":"Emari Demercado","pos":"RB","team":"KC","bye":5,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":84,"rank":159},{"id":53,"name":"Braelon Allen","pos":"RB","team":"NYJ","bye":13,"value":3,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":65,"rank":160},{"id":54,"name":"Isaiah Davis","pos":"RB","team":"NYJ","bye":13,"value":3,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":68,"rank":161},{"id":57,"name":"Keaton Mitchell","pos":"RB","team":"LAC","bye":7,"value":3,"yahooAvg":1.2,"yahooProj":2,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":48,"rank":162},{"id":58,"name":"Emmett Johnson","pos":"RB","team":"KC","bye":5,"value":3,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":58,"rank":163},{"id":61,"name":"Chris Brooks","pos":"RB","team":"GB","bye":11,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":66,"rank":164},{"id":64,"name":"Sean Tucker","pos":"RB","team":"TB","bye":10,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":72,"rank":165},{"id":67,"name":"DJ Giddens","pos":"RB","team":"IND","bye":13,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":67,"rank":166},{"id":69,"name":"Khalil Shakir","pos":"WR","team":"BUF","bye":7,"value":3,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":1.1,"status":null,"dsMarket":3,"dsAuction":4,"ffRank":53,"rank":167},{"id":70,"name":"Keon Coleman","pos":"WR","team":"BUF","bye":7,"value":2,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":71,"rank":204},{"id":72,"name":"Savion Williams","pos":"WR","team":"GB","bye":11,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"rank":168},{"id":78,"name":"Evan McPherson","pos":"K","team":"CIN","bye":6,"value":1,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":0.1,"status":null,"dsMarket":1,"dsAuction":1,"rank":255},{"id":81,"name":"Nick Folk","pos":"K","team":"ATL","bye":11,"value":1,"yahooAvg":1,"yahooProj":0,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"rank":256},{"id":83,"name":"Kenny Gainwell","pos":"RB","team":"TB","bye":10,"value":3,"yahooAvg":1.9,"yahooProj":2,"espnLiveSalary":1.5,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":33,"rank":169},{"id":84,"name":"Greg Dulcich","pos":"TE","team":"MIA","bye":6,"value":3,"yahooAvg":1.3,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":21,"rank":170},{"id":87,"name":"Darren Waller","pos":"TE","team":"CAR","bye":5,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":45,"rank":171},{"id":89,"name":"Aaron Jones Sr.","pos":"RB","team":"MIN","bye":6,"value":9,"yahooAvg":1.8,"yahooProj":2,"espnLiveSalary":1.5,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":41,"rank":97},{"id":90,"name":"Oronde Gadsden","pos":"TE","team":"LAC","bye":7,"value":3,"yahooAvg":1,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":26,"rank":172},{"id":94,"name":"Pat Bryant","pos":"WR","team":"DEN","bye":10,"value":3,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":66,"rank":173},{"id":97,"name":"Cameron Dicker","pos":"K","team":"LAC","bye":7,"value":1,"yahooAvg":1.6,"yahooProj":1,"espnLiveSalary":2.3,"status":null,"dsMarket":2,"dsAuction":3,"rank":257},{"id":98,"name":"Tory Horton","pos":"WR","team":"SEA","bye":11,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":87,"rank":174},{"id":100,"name":"Dallas Goedert","pos":"TE","team":"PHI","bye":10,"value":1,"yahooAvg":1.3,"yahooProj":2,"espnLiveSalary":1.9,"status":null,"dsMarket":4,"dsAuction":3,"ffRank":12,"rank":258},{"id":101,"name":"Jason Myers","pos":"K","team":"SEA","bye":11,"value":1,"yahooAvg":1.4,"yahooProj":1,"espnLiveSalary":1.7,"status":null,"dsMarket":1,"dsAuction":1,"rank":259},{"id":102,"name":"Darius Slayton","pos":"WR","team":"NYG","bye":8,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":81,"rank":175},{"id":105,"name":"Harrison Mevis","pos":"K","team":"LAR","bye":11,"value":1,"yahooAvg":1.3,"yahooProj":1,"espnLiveSalary":1.3,"status":null,"dsMarket":1,"dsAuction":1,"rank":260},{"id":106,"name":"Tyquan Thornton","pos":"WR","team":"KC","bye":5,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":2,"dsAuction":1,"ffRank":99,"rank":176},{"id":108,"name":"Rachaad White","pos":"RB","team":"WAS","bye":7,"value":1,"yahooAvg":1.6,"yahooProj":2,"espnLiveSalary":1.4,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":39,"rank":261},{"id":109,"name":"Ka'imi Fairbairn","pos":"K","team":"HOU","bye":8,"value":1,"yahooAvg":1.7,"yahooProj":1,"espnLiveSalary":1.5,"status":null,"dsMarket":1,"dsAuction":2,"rank":262},{"id":110,"name":"Malik Davis","pos":"RB","team":"DAL","bye":14,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"rank":177},{"id":113,"name":"Eddy Pineiro","pos":"K","team":"SF","bye":8,"value":1,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":0.9,"status":null,"dsMarket":1,"dsAuction":1,"rank":263},{"id":114,"name":"Emanuel Wilson","pos":"RB","team":"SEA","bye":11,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":79,"rank":178},{"id":117,"name":"Harrison Butker","pos":"K","team":"KC","bye":5,"value":1,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":0.9,"status":null,"dsMarket":1,"dsAuction":1,"rank":264},{"id":119,"name":"RJ Harvey","pos":"RB","team":"DEN","bye":10,"value":28,"yahooAvg":2.6,"yahooProj":2,"espnLiveSalary":1.5,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":38,"rank":44},{"id":120,"name":"Cam Little","pos":"K","team":"JAX","bye":7,"value":1,"yahooAvg":1.5,"yahooProj":1,"espnLiveSalary":1.3,"status":null,"dsMarket":1,"dsAuction":1,"rank":265},{"id":122,"name":"Jake Ferguson","pos":"TE","team":"DAL","bye":14,"value":2,"yahooAvg":1.2,"yahooProj":1,"espnLiveSalary":1.8,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":15,"rank":205},{"id":123,"name":"Jake Bates","pos":"K","team":"DET","bye":6,"value":2,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":0.8,"status":null,"dsMarket":1,"dsAuction":1,"rank":206},{"id":125,"name":"Mark Andrews","pos":"TE","team":"BAL","bye":13,"value":8,"yahooAvg":1.2,"yahooProj":2,"espnLiveSalary":1.3,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":17,"rank":104},{"id":126,"name":"Tyler Loop","pos":"K","team":"BAL","bye":13,"value":1,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":0.6,"status":null,"dsMarket":1,"dsAuction":1,"rank":266},{"id":128,"name":"T.J. Hockenson","pos":"TE","team":"MIN","bye":6,"value":6,"yahooAvg":1.3,"yahooProj":1,"espnLiveSalary":1,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":23,"rank":118},{"id":129,"name":"Cairo Santos","pos":"K","team":"CHI","bye":10,"value":1,"yahooAvg":1,"yahooProj":1,"espnLiveSalary":0.4,"status":null,"dsMarket":1,"dsAuction":1,"rank":267},{"id":130,"name":"Jahan Dotson","pos":"WR","team":"ATL","bye":11,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":103,"rank":179},{"id":133,"name":"Will Reichard","pos":"K","team":"MIN","bye":6,"value":1,"yahooAvg":1.2,"yahooProj":1,"espnLiveSalary":0.4,"status":null,"dsMarket":1,"dsAuction":1,"rank":268},{"id":134,"name":"Marvin Mims Jr.","pos":"WR","team":"DEN","bye":10,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":107,"rank":180},{"id":137,"name":"Jordan James","pos":"RB","team":"SF","bye":8,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":56,"rank":181},{"id":138,"name":"KaVontae Turpin","pos":"WR","team":"DAL","bye":14,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"rank":182},{"id":141,"name":"Brenton Strange","pos":"TE","team":"JAX","bye":7,"value":3,"yahooAvg":1,"yahooProj":1,"espnLiveSalary":0.2,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":13,"rank":183},{"id":142,"name":"DeMario Douglas","pos":"WR","team":"NE","bye":11,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":74,"rank":184},{"id":144,"name":"Kyle Monangai","pos":"RB","team":"CHI","bye":10,"value":1,"yahooAvg":2.6,"yahooProj":2,"espnLiveSalary":1.4,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":35,"rank":269},{"id":145,"name":"James Conner","pos":"RB","team":"ARI","bye":14,"value":25,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":null,"status":"Q","dsMarket":null,"dsAuction":null,"ffRank":64,"rank":50},{"id":146,"name":"Devaughn Vele","pos":"WR","team":"NO","bye":8,"value":3,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":94,"rank":185},{"id":147,"name":"Kenyon Sadiq","pos":"TE","team":"NYJ","bye":13,"value":3,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":1.1,"status":"Q","dsMarket":1,"dsAuction":1,"ffRank":22,"rank":186},{"id":148,"name":"Justice Hill","pos":"RB","team":"BAL","bye":13,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":57,"rank":270},{"id":149,"name":"Will Shipley","pos":"RB","team":"PHI","bye":10,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":87,"rank":271},{"id":151,"name":"Isaiah Likely","pos":"TE","team":"NYG","bye":8,"value":1,"yahooAvg":1.7,"yahooProj":2,"espnLiveSalary":1.4,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":14,"rank":272},{"id":152,"name":"Dontayvion Wicks","pos":"WR","team":"PHI","bye":10,"value":3,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":2,"dsAuction":1,"ffRank":75,"rank":187},{"id":153,"name":"Devin Singletary","pos":"RB","team":"NYG","bye":8,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":78,"rank":273},{"id":155,"name":"Dalton Kincaid","pos":"TE","team":"BUF","bye":7,"value":7,"yahooAvg":1.3,"yahooProj":2,"espnLiveSalary":1.1,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":10,"rank":111},{"id":156,"name":"Tyler Badie","pos":"RB","team":"DEN","bye":10,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"rank":274},{"id":158,"name":"Hunter Henry","pos":"TE","team":"NE","bye":11,"value":1,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":0.9,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":16,"rank":275},{"id":159,"name":"Tahj Brooks","pos":"RB","team":"CIN","bye":6,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":89,"rank":276},{"id":161,"name":"Jacory Croskey-Merritt","pos":"RB","team":"WAS","bye":7,"value":27,"yahooAvg":1.6,"yahooProj":2,"espnLiveSalary":1.2,"status":null,"dsMarket":3,"dsAuction":4,"ffRank":27,"rank":46},{"id":162,"name":"Trevor Etienne","pos":"RB","team":"CAR","bye":5,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":83,"rank":277},{"id":164,"name":"Blake Corum","pos":"RB","team":"LAR","bye":11,"value":1,"yahooAvg":2.8,"yahooProj":2,"espnLiveSalary":1.4,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":37,"rank":278},{"id":165,"name":"Tank Dell","pos":"WR","team":"HOU","bye":8,"value":14,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":0.1,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":83,"rank":80},{"id":166,"name":"Seth McGowan","pos":"RB","team":"IND","bye":13,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"rank":279},{"id":168,"name":"Woody Marks","pos":"RB","team":"HOU","bye":8,"value":1,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":0.8,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":44,"rank":280},{"id":169,"name":"Zachariah Branch","pos":"WR","team":"ATL","bye":11,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":79,"rank":281},{"id":170,"name":"Kendre Miller","pos":"RB","team":"NO","bye":8,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"rank":282},{"id":172,"name":"Zach Charbonnet","pos":"RB","team":"SEA","bye":11,"value":3,"yahooAvg":1.9,"yahooProj":1,"espnLiveSalary":1.1,"status":"PUP-P","dsMarket":1,"dsAuction":1,"ffRank":47,"rank":188},{"id":173,"name":"Darnell Mooney","pos":"WR","team":"NYG","bye":8,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":93,"rank":283},{"id":174,"name":"Jawhar Jordan","pos":"RB","team":"HOU","bye":8,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"rank":284},{"id":177,"name":"Tre Harris","pos":"WR","team":"LAC","bye":7,"value":1,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":2,"dsAuction":1,"ffRank":76,"rank":285},{"id":178,"name":"Nick Westbrook-Ikhine","pos":"WR","team":"IND","bye":13,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"rank":286},{"id":180,"name":"KC Concepcion","pos":"WR","team":"CLE","bye":11,"value":1,"yahooAvg":1.2,"yahooProj":2,"espnLiveSalary":1,"status":null,"dsMarket":4,"dsAuction":6,"ffRank":54,"rank":287},{"id":181,"name":"Ryan Flournoy","pos":"WR","team":"DAL","bye":14,"value":1,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":2,"dsAuction":1,"ffRank":73,"rank":288},{"id":184,"name":"Pat Freiermuth","pos":"TE","team":"PIT","bye":9,"value":1,"yahooAvg":1.3,"yahooProj":1,"espnLiveSalary":0.3,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":24,"rank":289},{"id":187,"name":"Dalton Schultz","pos":"TE","team":"HOU","bye":8,"value":3,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":0.1,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":18,"rank":189},{"id":188,"name":"Trey Smack","pos":"K","team":"GB","bye":11,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"rank":290},{"id":191,"name":"Antonio Williams","pos":"WR","team":"WAS","bye":7,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":89,"rank":291},{"id":192,"name":"Jake Elliott","pos":"K","team":"PHI","bye":10,"value":1,"yahooAvg":1,"yahooProj":0,"espnLiveSalary":0.1,"status":null,"dsMarket":1,"dsAuction":1,"rank":292},{"id":194,"name":"Romeo Doubs","pos":"WR","team":"NE","bye":11,"value":1,"yahooAvg":1.1,"yahooProj":2,"espnLiveSalary":0.9,"status":null,"dsMarket":5,"dsAuction":7,"ffRank":51,"rank":293},{"id":195,"name":"Jaylin Noel","pos":"WR","team":"HOU","bye":8,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":109,"rank":294},{"id":196,"name":"Cade Otton","pos":"TE","team":"TB","bye":10,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":25,"rank":295},{"id":198,"name":"Jayden Higgins","pos":"WR","team":"HOU","bye":8,"value":1,"yahooAvg":1.1,"yahooProj":2,"espnLiveSalary":0.7,"status":null,"dsMarket":4,"dsAuction":6,"ffRank":46,"rank":296},{"id":199,"name":"Xavier Legette","pos":"WR","team":"CAR","bye":5,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":118,"rank":297},{"id":200,"name":"Mike Gesicki","pos":"TE","team":"CIN","bye":6,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":30,"rank":298},{"id":202,"name":"Jalen Coker","pos":"WR","team":"CAR","bye":5,"value":1,"yahooAvg":1.1,"yahooProj":2,"espnLiveSalary":0.7,"status":null,"dsMarket":3,"dsAuction":4,"ffRank":55,"rank":299},{"id":203,"name":"Jack Bech","pos":"WR","team":"LV","bye":13,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":91,"rank":300},{"id":204,"name":"Evan Engram","pos":"TE","team":"DEN","bye":10,"value":5,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":32,"rank":123},{"id":206,"name":"Jerry Jeudy","pos":"WR","team":"CLE","bye":11,"value":2,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":0.6,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":63,"rank":207},{"id":207,"name":"Jonah Coleman","pos":"RB","team":"DEN","bye":10,"value":1,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":51,"rank":301},{"id":208,"name":"David Njoku","pos":"TE","team":"LAC","bye":7,"value":4,"yahooAvg":1.3,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":29,"rank":134},{"id":210,"name":"Kaelon Black","pos":"RB","team":"SF","bye":8,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":69,"rank":302},{"id":211,"name":"Michael Mayer","pos":"TE","team":"LV","bye":13,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":38,"rank":303},{"id":213,"name":"Kaytron Allen","pos":"RB","team":"WAS","bye":7,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":81,"rank":304},{"id":214,"name":"Andrei Iosivas","pos":"WR","team":"CIN","bye":6,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":97,"rank":305},{"id":215,"name":"Gunnar Helm","pos":"TE","team":"TEN","bye":9,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":33,"rank":306},{"id":216,"name":"Ashton Dulin","pos":"WR","team":"IND","bye":13,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"rank":307},{"id":217,"name":"Chig Okonkwo","pos":"TE","team":"WAS","bye":7,"value":1,"yahooAvg":1,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":19,"rank":308},{"id":218,"name":"Jordan Mason","pos":"RB","team":"MIN","bye":6,"value":1,"yahooAvg":1.8,"yahooProj":2,"espnLiveSalary":0.8,"status":null,"dsMarket":4,"dsAuction":5,"ffRank":36,"rank":309},{"id":219,"name":"AJ Barner","pos":"TE","team":"SEA","bye":11,"value":1,"yahooAvg":1.2,"yahooProj":1,"espnLiveSalary":0.1,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":27,"rank":310},{"id":220,"name":"Alvin Kamara","pos":"RB","team":"NO","bye":8,"value":25,"yahooAvg":1.3,"yahooProj":1,"espnLiveSalary":0.6,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":52,"rank":51},{"id":222,"name":"Isiah Pacheco","pos":"RB","team":"DET","bye":6,"value":25,"yahooAvg":1.2,"yahooProj":1,"espnLiveSalary":0.6,"status":"Q","dsMarket":1,"dsAuction":1,"ffRank":46,"rank":52},{"id":224,"name":"Chris Rodriguez Jr.","pos":"RB","team":"JAX","bye":7,"value":1,"yahooAvg":1.2,"yahooProj":2,"espnLiveSalary":0.3,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":45,"rank":311},{"id":227,"name":"Nicholas Singleton","pos":"RB","team":"TEN","bye":9,"value":1,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":61,"rank":312},{"id":229,"name":"Tank Bigsby","pos":"RB","team":"PHI","bye":10,"value":1,"yahooAvg":1.3,"yahooProj":1,"espnLiveSalary":0.2,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":50,"rank":313},{"id":230,"name":"Demond Claiborne","pos":"RB","team":"MIN","bye":6,"value":1,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":82,"rank":314},{"id":232,"name":"Rashid Shaheed","pos":"WR","team":"SEA","bye":11,"value":1,"yahooAvg":1,"yahooProj":1,"espnLiveSalary":0.4,"status":null,"dsMarket":4,"dsAuction":5,"ffRank":52,"rank":315},{"id":233,"name":"Kimani Vidal","pos":"RB","team":"LAC","bye":7,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":55,"rank":316},{"id":235,"name":"Jalen McMillan","pos":"WR","team":"TB","bye":10,"value":1,"yahooAvg":1,"yahooProj":1,"espnLiveSalary":0.2,"status":"Q","dsMarket":3,"dsAuction":4,"ffRank":77,"rank":317},{"id":236,"name":"Isaac TeSlaa","pos":"WR","team":"DET","bye":6,"value":1,"yahooAvg":1,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":2,"dsAuction":1,"ffRank":82,"rank":318},{"id":238,"name":"Calvin Ridley","pos":"WR","team":"TEN","bye":9,"value":12,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":0.1,"status":null,"dsMarket":6,"dsAuction":4,"ffRank":69,"rank":88},{"id":239,"name":"Jaylen Wright","pos":"RB","team":"MIA","bye":6,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":73,"rank":319},{"id":241,"name":"Denzel Boston","pos":"WR","team":"CLE","bye":11,"value":1,"yahooAvg":1.2,"yahooProj":1,"espnLiveSalary":0.2,"status":null,"dsMarket":3,"dsAuction":4,"ffRank":64,"rank":320},{"id":242,"name":"Ollie Gordon II","pos":"RB","team":"MIA","bye":6,"value":1,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":85,"rank":321},{"id":244,"name":"Travis Hunter","pos":"WR","team":"JAX","bye":7,"value":15,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":1.7,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":65,"rank":77},{"id":245,"name":"Chris Bell","pos":"WR","team":"MIA","bye":6,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":95,"rank":322},{"id":247,"name":"Adonai Mitchell","pos":"WR","team":"NYJ","bye":13,"value":1,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":68,"rank":323},{"id":248,"name":"Malik Washington","pos":"WR","team":"MIA","bye":6,"value":1,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":2,"dsAuction":1,"ffRank":57,"rank":324},{"id":250,"name":"Jalen Tolbert","pos":"WR","team":"MIA","bye":6,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":90,"rank":325},{"id":252,"name":"Cooper Kupp","pos":"WR","team":"SEA","bye":11,"value":12,"yahooAvg":1,"yahooProj":0,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":67,"rank":89},{"id":254,"name":"De'Zhaun Stribling","pos":"WR","team":"SF","bye":8,"value":1,"yahooAvg":1.4,"yahooProj":2,"espnLiveSalary":0.2,"status":null,"dsMarket":3,"dsAuction":4,"ffRank":58,"rank":326},{"id":255,"name":"Caleb Douglas","pos":"WR","team":"MIA","bye":6,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":80,"rank":327},{"id":257,"name":"Germie Bernard","pos":"WR","team":"PIT","bye":9,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":70,"rank":328},{"id":258,"name":"Kayshon Boutte","pos":"WR","team":"NE","bye":11,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":78,"rank":329},{"id":260,"name":"Tre Tucker","pos":"WR","team":"LV","bye":13,"value":1,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":0.2,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":59,"rank":330},{"id":261,"name":"Brandon Aiyuk","pos":"WR","team":"SF","bye":8,"value":31,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"rank":39},{"id":262,"name":"Ray Davis","pos":"RB","team":"BUF","bye":7,"value":1,"yahooAvg":null,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":71,"rank":331},{"id":263,"name":"Ted Hurst","pos":"WR","team":"TB","bye":10,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":88,"rank":332},{"id":264,"name":"Tyrone Tracy Jr.","pos":"RB","team":"NYG","bye":8,"value":7,"yahooAvg":1.2,"yahooProj":1,"espnLiveSalary":0.2,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":40,"rank":112},{"id":266,"name":"Mike Washington Jr.","pos":"RB","team":"LV","bye":13,"value":1,"yahooAvg":2.6,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":60,"rank":333},{"id":268,"name":"Tyler Allgeier","pos":"RB","team":"ARI","bye":14,"value":1,"yahooAvg":1.1,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":54,"rank":334},{"id":269,"name":"Chris Boswell","pos":"K","team":"PIT","bye":9,"value":1,"yahooAvg":1.2,"yahooProj":1,"espnLiveSalary":0.4,"status":null,"dsMarket":1,"dsAuction":1,"rank":335},{"id":271,"name":"Dylan Sampson","pos":"RB","team":"CLE","bye":11,"value":1,"yahooAvg":1,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":49,"rank":336},{"id":272,"name":"Chase McLaughlin","pos":"K","team":"TB","bye":10,"value":1,"yahooAvg":1.4,"yahooProj":1,"espnLiveSalary":null,"status":null,"dsMarket":1,"dsAuction":1,"rank":337},{"id":274,"name":"Terrance Ferguson","pos":"TE","team":"LAR","bye":11,"value":1,"yahooAvg":1.2,"yahooProj":1,"espnLiveSalary":0.1,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":34,"rank":338},{"id":275,"name":"Adam Randall","pos":"RB","team":"BAL","bye":13,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":88,"rank":339},{"id":277,"name":"Juwan Johnson","pos":"TE","team":"NO","bye":8,"value":1,"yahooAvg":1,"yahooProj":1,"espnLiveSalary":0.3,"status":null,"dsMarket":1,"dsAuction":1,"ffRank":20,"rank":340},{"id":278,"name":"Samaje Perine","pos":"RB","team":"CIN","bye":6,"value":1,"yahooAvg":null,"yahooProj":null,"espnLiveSalary":null,"status":null,"dsMarket":null,"dsAuction":null,"ffRank":59,"rank":341},{"id":291,"name":"Brian Burns","pos":"DL","team":"NYG","bye":8,"value":1,"rank":342},{"id":292,"name":"T.J. Watt","pos":"DL","team":"PIT","bye":9,"value":2,"rank":208},{"id":293,"name":"Andrew Van Ginkel","pos":"DL","team":"MIN","bye":6,"value":1,"rank":343},{"id":294,"name":"Byron Young","pos":"DL","team":"LAR","bye":11,"value":1,"rank":344},{"id":295,"name":"Nik Bonitto","pos":"DL","team":"DEN","bye":10,"value":1,"rank":345},{"id":296,"name":"Trey Hendrickson","pos":"DL","team":"BAL","bye":13,"value":1,"rank":346},{"id":297,"name":"Josh Hines-Allen","pos":"DL","team":"JAX","bye":7,"value":1,"rank":347},{"id":298,"name":"Tuli Tuipulotu","pos":"DL","team":"LAC","bye":7,"value":1,"rank":348},{"id":299,"name":"Alex Highsmith","pos":"DL","team":"PIT","bye":9,"value":1,"rank":349},{"id":300,"name":"Montez Sweat","pos":"DL","team":"CHI","bye":10,"value":1,"rank":350},{"id":301,"name":"Jaelan Phillips","pos":"DL","team":"CAR","bye":5,"value":1,"rank":351},{"id":302,"name":"Leonard Williams","pos":"DL","team":"SEA","bye":11,"value":1,"rank":352},{"id":303,"name":"Cameron Heyward","pos":"DL","team":"PIT","bye":9,"value":1,"rank":353},{"id":304,"name":"Chase Young","pos":"DL","team":"NO","bye":8,"value":1,"rank":354},{"id":305,"name":"Dallas Turner","pos":"DL","team":"MIN","bye":6,"value":1,"rank":355},{"id":306,"name":"George Karlaftis III","pos":"DL","team":"KC","bye":5,"value":1,"rank":356},{"id":307,"name":"Quinnen Williams","pos":"DL","team":"NYJ","bye":13,"value":1,"rank":357},{"id":308,"name":"Harold Landry III","pos":"DL","team":"NE","bye":11,"value":1,"rank":358},{"id":321,"name":"Alex Singleton","pos":"LB","team":"DEN","bye":10,"value":2,"rank":209},{"id":322,"name":"Nate Landman","pos":"LB","team":"LAR","bye":11,"value":1,"rank":359},{"id":323,"name":"Tremaine Edmunds","pos":"LB","team":"NYG","bye":8,"value":1,"rank":360},{"id":324,"name":"Edgerrin Cooper","pos":"LB","team":"GB","bye":11,"value":1,"rank":361},{"id":325,"name":"Cedric Gray","pos":"LB","team":"TEN","bye":9,"value":1,"rank":362},{"id":326,"name":"Robert Spillane","pos":"LB","team":"NE","bye":11,"value":4,"rank":135},{"id":327,"name":"Zaire Franklin","pos":"LB","team":"GB","bye":11,"value":3,"rank":190},{"id":328,"name":"T.J. Edwards","pos":"LB","team":"CHI","bye":10,"value":2,"rank":210},{"id":329,"name":"Azeez Al-Shaair","pos":"LB","team":"HOU","bye":8,"value":1,"rank":363},{"id":330,"name":"Devin Bush Jr.","pos":"LB","team":"CHI","bye":10,"value":1,"rank":364},{"id":331,"name":"Sonny Styles","pos":"LB","team":"WAS","bye":7,"value":1,"rank":365},{"id":332,"name":"Divine Deablo","pos":"LB","team":"ATL","bye":11,"value":1,"rank":366},{"id":333,"name":"Barrett Carter","pos":"LB","team":"CIN","bye":6,"value":1,"rank":367},{"id":334,"name":"Terrel Bernard","pos":"LB","team":"BUF","bye":7,"value":2,"rank":211},{"id":335,"name":"Patrick Queen","pos":"LB","team":"PIT","bye":9,"value":1,"rank":368},{"id":336,"name":"Dee Winters","pos":"LB","team":"DAL","bye":14,"value":1,"rank":369},{"id":337,"name":"CJ Allen","pos":"LB","team":"IND","bye":13,"value":1,"rank":370},{"id":338,"name":"Kaden Elliss","pos":"LB","team":"NO","bye":8,"value":2,"rank":212},{"id":351,"name":"Mansoor Delane","pos":"DB","team":"KC","bye":5,"value":1,"rank":371},{"id":352,"name":"Trent McDuffie","pos":"DB","team":"LAR","bye":11,"value":1,"rank":372},{"id":353,"name":"Alontae Taylor","pos":"DB","team":"TEN","bye":9,"value":1,"rank":373},{"id":358,"name":"Steelers D/ST","pos":"DST","team":"PIT","bye":9,"value":2,"espnLiveSalary":1.4,"rank":213},{"id":359,"name":"Ravens D/ST","pos":"DST","team":"BAL","bye":13,"value":1,"espnLiveSalary":1.2,"rank":374},{"id":360,"name":"Eagles D/ST","pos":"DST","team":"PHI","bye":10,"value":1,"espnLiveSalary":1.2,"rank":375},{"id":361,"name":"Patriots D/ST","pos":"DST","team":"NE","bye":11,"value":1,"espnLiveSalary":0.9,"rank":376},{"id":362,"name":"Browns D/ST","pos":"DST","team":"CLE","bye":11,"value":4,"espnLiveSalary":0.8,"rank":136},{"id":363,"name":"Lions D/ST","pos":"DST","team":"DET","bye":6,"value":1,"espnLiveSalary":0.7,"rank":377},{"id":364,"name":"Chiefs D/ST","pos":"DST","team":"KC","bye":5,"value":1,"espnLiveSalary":0.5,"rank":378},{"id":365,"name":"Chargers D/ST","pos":"DST","team":"LAC","bye":7,"value":1,"espnLiveSalary":0.5,"rank":379},{"id":366,"name":"Jaguars D/ST","pos":"DST","team":"JAX","bye":7,"value":1,"espnLiveSalary":0.3,"rank":380},{"id":367,"name":"Packers D/ST","pos":"DST","team":"GB","bye":11,"value":1,"espnLiveSalary":0.2,"rank":381},{"id":368,"name":"Vikings D/ST","pos":"DST","team":"MIN","bye":6,"value":1,"espnLiveSalary":0.2,"rank":382},{"id":369,"name":"Cowboys D/ST","pos":"DST","team":"DAL","bye":14,"value":3,"espnLiveSalary":0.1,"rank":191},{"id":370,"name":"49ers D/ST","pos":"DST","team":"SF","bye":8,"value":3,"espnLiveSalary":0.1,"rank":192},{"id":371,"name":"Bills D/ST","pos":"DST","team":"BUF","bye":7,"value":1,"espnLiveSalary":0.1,"rank":383},{"id":372,"name":"Colts D/ST","pos":"DST","team":"IND","bye":13,"value":1,"rank":384},{"id":373,"name":"Bengals D/ST","pos":"DST","team":"CIN","bye":6,"value":1,"rank":385},{"id":374,"name":"Bears D/ST","pos":"DST","team":"CHI","bye":10,"value":1,"rank":386},{"id":375,"name":"Jets D/ST","pos":"DST","team":"NYJ","bye":13,"value":2,"rank":214},{"id":376,"name":"Saints D/ST","pos":"DST","team":"NO","bye":8,"value":1,"rank":387},{"id":377,"name":"Buccaneers D/ST","pos":"DST","team":"TB","bye":10,"value":1,"rank":388},{"id":378,"name":"Shedeur Sanders","pos":"QB","team":"CLE","bye":11,"value":1,"ffRank":30,"rank":389},{"id":379,"name":"Kirk Cousins","pos":"QB","team":"LV","bye":13,"value":9,"ffRank":32,"rank":98},{"id":380,"name":"Michael Penix Jr.","pos":"QB","team":"ATL","bye":11,"value":1,"ffRank":34,"rank":390},{"id":381,"name":"Carson Beck","pos":"QB","team":"ARI","bye":14,"value":1,"ffRank":35,"rank":391},{"id":382,"name":"Jerome Ford","pos":"RB","team":"WAS","bye":7,"value":5,"ffRank":70,"rank":124},{"id":383,"name":"Devin Neal","pos":"RB","team":"NO","bye":8,"value":1,"ffRank":74,"rank":392},{"id":384,"name":"Brashard Smith","pos":"RB","team":"KC","bye":5,"value":1,"ffRank":77,"rank":393},{"id":385,"name":"Kaleb Johnson","pos":"RB","team":"PIT","bye":9,"value":16,"ffRank":86,"rank":71},{"id":386,"name":"AJ Dillon","pos":"RB","team":"CAR","bye":5,"value":1,"ffRank":90,"rank":394},{"id":387,"name":"Audric Estime","pos":"RB","team":"NO","bye":8,"value":1,"ffRank":91,"rank":395},{"id":388,"name":"Cyrus Allen","pos":"WR","team":"KC","bye":5,"value":1,"ffRank":85,"rank":396},{"id":389,"name":"Troy Franklin","pos":"WR","team":"DEN","bye":10,"value":1,"ffRank":92,"rank":397},{"id":390,"name":"Malachi Fields","pos":"WR","team":"NYG","bye":8,"value":1,"ffRank":96,"rank":398},{"id":391,"name":"Elic Ayomanor","pos":"WR","team":"TEN","bye":9,"value":1,"ffRank":98,"rank":399},{"id":392,"name":"Chimere Dike","pos":"WR","team":"TEN","bye":9,"value":1,"ffRank":100,"rank":400},{"id":393,"name":"Christian Kirk","pos":"WR","team":"SF","bye":8,"value":2,"ffRank":101,"rank":215},{"id":394,"name":"Tez Johnson","pos":"WR","team":"TB","bye":10,"value":1,"ffRank":102,"rank":401},{"id":395,"name":"Kyle Williams","pos":"WR","team":"NE","bye":11,"value":1,"ffRank":104,"rank":402},{"id":396,"name":"Malik Benson","pos":"WR","team":"LV","bye":13,"value":1,"ffRank":105,"rank":403},{"id":397,"name":"Roman Wilson","pos":"WR","team":"PIT","bye":9,"value":1,"ffRank":106,"rank":404},{"id":398,"name":"Kalif Raymond","pos":"WR","team":"CHI","bye":10,"value":1,"ffRank":108,"rank":405},{"id":399,"name":"Mack Hollins","pos":"WR","team":"NE","bye":11,"value":1,"ffRank":110,"rank":406},{"id":400,"name":"Treylon Burks","pos":"WR","team":"WAS","bye":7,"value":1,"ffRank":111,"rank":407},{"id":401,"name":"Jordan Whittington","pos":"WR","team":"LAR","bye":11,"value":1,"ffRank":112,"rank":408},{"id":402,"name":"Kendrick Bourne","pos":"WR","team":"ARI","bye":14,"value":1,"ffRank":113,"rank":409},{"id":403,"name":"Xavier Hutchinson","pos":"WR","team":"HOU","bye":8,"value":1,"ffRank":114,"rank":410},{"id":404,"name":"Brenen Thompson","pos":"WR","team":"LAC","bye":7,"value":1,"ffRank":115,"rank":411},{"id":405,"name":"Dont'e Thornton Jr.","pos":"WR","team":"LV","bye":13,"value":1,"ffRank":116,"rank":412},{"id":406,"name":"Elijah Sarratt","pos":"WR","team":"BAL","bye":13,"value":1,"ffRank":117,"rank":413},{"id":407,"name":"Olamide Zaccheaus","pos":"WR","team":"ATL","bye":11,"value":1,"ffRank":119,"rank":414},{"id":408,"name":"Tutu Atwell","pos":"WR","team":"MIA","bye":6,"value":1,"ffRank":120,"rank":415},{"id":409,"name":"Calvin Austin III","pos":"WR","team":"NYG","bye":8,"value":1,"ffRank":121,"rank":416},{"id":410,"name":"Devontez Walker","pos":"WR","team":"BAL","bye":13,"value":1,"ffRank":122,"rank":417},{"id":411,"name":"Chris Brazzell II","pos":"WR","team":"CAR","bye":5,"value":1,"ffRank":123,"rank":418},{"id":412,"name":"Hollywood Brown","pos":"WR","team":"PHI","bye":10,"value":1,"ffRank":124,"rank":419},{"id":413,"name":"Skyler Bell","pos":"WR","team":"BUF","bye":7,"value":1,"ffRank":125,"rank":420},{"id":414,"name":"Van Jefferson","pos":"WR","team":"WAS","bye":7,"value":1,"ffRank":126,"rank":421},{"id":415,"name":"Cedric Tillman","pos":"WR","team":"CLE","bye":11,"value":1,"ffRank":127,"rank":422},{"id":416,"name":"Jaylin Lane","pos":"WR","team":"WAS","bye":7,"value":1,"ffRank":128,"rank":423},{"id":417,"name":"Bryce Lance","pos":"WR","team":"NO","bye":8,"value":1,"ffRank":129,"rank":424},{"id":418,"name":"Zavion Thomas","pos":"WR","team":"CHI","bye":10,"value":1,"ffRank":130,"rank":425},{"id":419,"name":"Kendrick Law","pos":"WR","team":"DET","bye":6,"value":1,"ffRank":131,"rank":426},{"id":420,"name":"Colby Parkinson","pos":"TE","team":"LAR","bye":11,"value":1,"ffRank":28,"rank":427},{"id":421,"name":"Cole Kmet","pos":"TE","team":"CHI","bye":10,"value":1,"ffRank":31,"rank":428},{"id":422,"name":"Dawson Knox","pos":"TE","team":"BUF","bye":7,"value":1,"ffRank":35,"rank":429},{"id":423,"name":"Mason Taylor","pos":"TE","team":"NYJ","bye":13,"value":1,"ffRank":36,"rank":430},{"id":424,"name":"Eli Stowers","pos":"TE","team":"PHI","bye":10,"value":1,"ffRank":37,"rank":431},{"id":425,"name":"Theo Johnson","pos":"TE","team":"NYG","bye":8,"value":1,"ffRank":39,"rank":432},{"id":426,"name":"Charlie Kolar","pos":"TE","team":"LAC","bye":7,"value":1,"ffRank":40,"rank":433},{"id":427,"name":"Luke Musgrave","pos":"TE","team":"GB","bye":11,"value":1,"ffRank":41,"rank":434},{"id":428,"name":"Ja'Tavion Sanders","pos":"TE","team":"CAR","bye":5,"value":1,"ffRank":42,"rank":435},{"id":429,"name":"Noah Gray","pos":"TE","team":"KC","bye":5,"value":1,"ffRank":43,"rank":436},{"id":430,"name":"Elijah Arroyo","pos":"TE","team":"SEA","bye":11,"value":1,"ffRank":44,"rank":437},{"id":431,"name":"Darnell Washington","pos":"TE","team":"PIT","bye":9,"value":1,"ffRank":46,"rank":438},{"id":432,"name":"Ben Sinnott","pos":"TE","team":"WAS","bye":7,"value":1,"ffRank":47,"rank":439},{"id":433,"name":"Max Klare","pos":"TE","team":"LAR","bye":11,"value":1,"ffRank":48,"rank":440},{"id":434,"name":"Jake Tonges","pos":"TE","team":"SF","bye":8,"value":1,"ffRank":49,"rank":441},{"id":435,"name":"Tommy Tremble","pos":"TE","team":"CAR","bye":5,"value":1,"ffRank":50,"rank":442},{"id":436,"name":"Noah Fant","pos":"TE","team":"NO","bye":8,"value":1,"ffRank":51,"rank":443},{"id":437,"name":"Justin Joly","pos":"TE","team":"DEN","bye":10,"value":1,"ffRank":52,"rank":444},{"id":438,"name":"Oscar Delp","pos":"TE","team":"NO","bye":8,"value":1,"ffRank":53,"rank":445},{"id":439,"name":"Nate Boerkircher","pos":"TE","team":"JAX","bye":7,"value":1,"ffRank":54,"rank":446},{"id":440,"name":"Tyreek Hill","pos":"WR","team":"MIA","bye":6,"value":46,"yahooAvg":1.4,"yahooProj":1,"status":"NA","rank":24},{"id":441,"name":"Ricky Pearsall","pos":"WR","team":"SF","bye":8,"value":14,"yahooAvg":1.2,"yahooProj":2,"status":"IR","rank":81},{"id":442,"name":"Andy Borregales","pos":"K","team":"NE","bye":11,"value":1,"yahooAvg":1.1,"yahooProj":1,"status":null,"rank":447},{"id":443,"name":"Wil Lutz","pos":"K","team":"DEN","bye":10,"value":1,"yahooAvg":1,"yahooProj":1,"status":null,"rank":448},{"id":444,"name":"Tyler Bass","pos":"K","team":"BUF","bye":7,"value":1,"yahooAvg":1,"yahooProj":0,"status":null,"rank":449},{"id":447,"name":"Chigoziem Okonkwo","pos":"TE","team":"WAS","bye":7,"value":1,"dsMarket":1,"dsAuction":1,"rank":450},{"id":448,"name":"Keenan Allen","pos":"WR","team":"UNS","bye":0,"value":8,"dsMarket":1,"dsAuction":1,"rank":105},{"id":449,"name":"Kenneth Gainwell","pos":"RB","team":"TB","bye":10,"value":1,"dsMarket":1,"dsAuction":1,"rank":451},{"id":450,"name":"Charlie Smyth","pos":"K","team":"NO","bye":8,"value":1,"dsMarket":1,"dsAuction":1,"rank":452},{"id":451,"name":"Andres Borregales","pos":"K","team":"NE","bye":11,"value":1,"dsMarket":1,"dsAuction":1,"rank":453},{"id":452,"name":"Ryan Fitzgerald","pos":"K","team":"CAR","bye":5,"value":1,"dsMarket":1,"dsAuction":1,"rank":454},{"id":453,"name":"Jake Moody","pos":"K","team":"WAS","bye":7,"value":1,"dsMarket":1,"dsAuction":1,"rank":455},{"id":454,"name":"Joshua Palmer","pos":"WR","team":"BUF","bye":7,"value":1,"dsMarket":1,"dsAuction":1,"rank":456},{"id":455,"name":"Nathaniel Dell","pos":"WR","team":"HOU","bye":8,"value":1,"dsMarket":1,"dsAuction":1,"rank":457},{"id":456,"name":"Marquise Brown","pos":"WR","team":"PHI","bye":10,"value":1,"dsMarket":1,"dsAuction":1,"rank":458},{"id":457,"name":"Derwin James Jr.","pos":"DB","team":"LAC","bye":7,"value":1,"rank":459},{"id":458,"name":"Kyle Hamilton","pos":"DB","team":"BAL","bye":13,"value":1,"rank":460},{"id":459,"name":"Antoine Winfield Jr.","pos":"DB","team":"TB","bye":10,"value":1,"rank":461},{"id":460,"name":"Budda Baker","pos":"DB","team":"ARI","bye":14,"value":1,"rank":462},{"id":461,"name":"Jessie Bates III","pos":"DB","team":"ATL","bye":11,"value":2,"rank":216},{"id":462,"name":"Xavier McKinney","pos":"DB","team":"GB","bye":11,"value":1,"rank":463},{"id":463,"name":"Talanoa Hufanga","pos":"DB","team":"DEN","bye":10,"value":1,"rank":464},{"id":464,"name":"Brian Branch","pos":"DB","team":"DET","bye":6,"value":4,"rank":137},{"id":465,"name":"Nick Emmanwori","pos":"DB","team":"SEA","bye":11,"value":1,"rank":465},{"id":466,"name":"Tykee Smith","pos":"DB","team":"TB","bye":10,"value":1,"rank":466},{"id":467,"name":"Jordan Battle","pos":"DB","team":"CIN","bye":6,"value":1,"rank":467},{"id":468,"name":"Kam Curl","pos":"DB","team":"LAR","bye":11,"value":1,"rank":468},{"id":469,"name":"Jeremy Chinn","pos":"DB","team":"LV","bye":13,"value":1,"rank":469},{"id":470,"name":"Nick Cross","pos":"DB","team":"WAS","bye":7,"value":1,"rank":470},{"id":471,"name":"Tre'von Moehrig","pos":"DB","team":"CAR","bye":5,"value":1,"rank":471},{"id":472,"name":"Jalen Pitre","pos":"DB","team":"HOU","bye":8,"value":1,"rank":472},{"id":473,"name":"Chamarri Conner","pos":"DB","team":"KC","bye":5,"value":1,"rank":473},{"id":474,"name":"Xavier Watts","pos":"DB","team":"ATL","bye":11,"value":1,"rank":474},{"id":475,"name":"Kevin Byard III","pos":"DB","team":"NE","bye":11,"value":1,"rank":475},{"id":476,"name":"DeShon Elliott","pos":"DB","team":"PIT","bye":9,"value":1,"rank":476},{"id":477,"name":"Quentin Lake","pos":"DB","team":"LAR","bye":11,"value":1,"rank":477},{"id":478,"name":"AJ Haulcy","pos":"DB","team":"IND","bye":13,"value":1,"rank":478},{"id":479,"name":"Julian Love","pos":"DB","team":"SEA","bye":11,"value":1,"rank":479},{"id":480,"name":"Brandon Jones","pos":"DB","team":"DEN","bye":10,"value":1,"rank":480},{"id":481,"name":"Joshua Metellus","pos":"DB","team":"MIN","bye":6,"value":1,"rank":481}];
+// Cloud sync config (Firebase Firestore, free Spark plan). {"apiKey": "AIzaSyBp-co311HdQg6FaBtpRTwTcdzR7hWVAU8", "authDomain": "ff-draft-2026-e5535.firebaseapp.com", "projectId": "ff-draft-2026-e5535", "storageBucket": "ff-draft-2026-e5535.firebasestorage.app", "messagingSenderId": "538803073358", "appId": "1:538803073358:web:6f593358842d4ba60f2e1f", "measurementId": "G-ET7WWN9ZXG"}
+// is null until a Firebase project's config object is embedded at build
+// time; until then the app runs exactly as before, fully local/in-browser.
+const FIREBASE_CONFIG = {"apiKey": "AIzaSyBp-co311HdQg6FaBtpRTwTcdzR7hWVAU8", "authDomain": "ff-draft-2026-e5535.firebaseapp.com", "projectId": "ff-draft-2026-e5535", "storageBucket": "ff-draft-2026-e5535.firebasestorage.app", "messagingSenderId": "538803073358", "appId": "1:538803073358:web:6f593358842d4ba60f2e1f", "measurementId": "G-ET7WWN9ZXG"};
+const FIREBASE_ROOM_ID = "d4c8eef52ea544f7d9cd";
+(function () {
+  const BUDGET = 300;
+  const SLOT_ORDER = ["QB","RB","WR","TE","FLEX1","FLEX2","FLEX3","OP","K","DL","LB","DB","DP1","DP2","DST",
+    "BENCH1","BENCH2","BENCH3","BENCH4","BENCH5","BENCH6"];
+  const SLOT_ELIGIBILITY = {
+    QB:["QB"], RB:["RB"], WR:["WR"], TE:["TE"],
+    K:["K"], DL:["DL"], LB:["LB"], DB:["DB"], DST:["DST"],
+    FLEX1:["RB","WR","TE"], FLEX2:["RB","WR","TE"], FLEX3:["RB","WR","TE"],
+    OP:["QB","RB","WR","TE"],
+    DP1:["DL","LB","DB"], DP2:["DL","LB","DB"],
+    BENCH1:["QB","RB","WR","TE","K","DL","LB","DB","DST"], BENCH2:["QB","RB","WR","TE","K","DL","LB","DB","DST"],
+    BENCH3:["QB","RB","WR","TE","K","DL","LB","DB","DST"], BENCH4:["QB","RB","WR","TE","K","DL","LB","DB","DST"],
+    BENCH5:["QB","RB","WR","TE","K","DL","LB","DB","DST"], BENCH6:["QB","RB","WR","TE","K","DL","LB","DB","DST"],
+  };
+  const DEDICATED_SLOTS = ["QB","RB","WR","TE","K","DL","LB","DB","DST"];
+  const SLOT_LABEL = { QB:"QB",RB:"RB",WR:"WR",TE:"TE",FLEX1:"FLEX",FLEX2:"FLEX",FLEX3:"FLEX",OP:"OP",
+    K:"K",DL:"DL",LB:"LB",DB:"DB",DP1:"DP",DP2:"DP",DST:"DST",BENCH1:"BN",BENCH2:"BN",BENCH3:"BN",BENCH4:"BN",BENCH5:"BN",BENCH6:"BN" };
+  const TOTAL_SLOTS = SLOT_ORDER.length; // 21 (15 starters + 6 bench)
+  const ROSTERABLE_CAP = 210; // players beyond this rank are treated as $1 replacement-level depth for inflation math
+
+  // Positions the user wants a hard personal spend ceiling on, regardless of
+  // computed market value. Real 2024+2025 draft-recap data shows this league
+  // actually pays almost nothing for IDP/DST (DL avg $1.40/max $6, LB avg
+  // $2.07/max $7, DB avg $1.35/max $5, DST avg $1.48/max $4) -- these caps
+  // are set just above those real ceilings as a "don't get baited into a
+  // bidding war" guardrail, not because the league overbids them. Editable
+  // in the UI.
+  let positionCaps = { DL: 5, LB: 6, DB: 5, DST: 4 };
+
+  const TEAMS = [
+    { code:"SRID", name:"Hail to Pitts :)", manager:"Sridhar Mandyam" },
+    { code:"IS",   name:"Dakoit", manager:"Iday Shanawaz" },
+    { code:"CYD",  name:"Questionable At Best", manager:"Matt Keller" },
+    { code:"SPIR", name:"Fadi loves $100 Golden Showas", manager:"Abhijit Shome" },
+    { code:"Razi", name:"MS Dhoni", manager:"Razi Imam" },
+    { code:"NUTZ", name:"Abhi Loves Golden Balls", manager:"Fahad Mahmood" },
+    { code:"TB12", name:"Patty-Kelce call me Beeach 2-0", manager:"Sanjay Gulati" },
+    { code:"FF",   name:"The Wadinator Fawad Asghar", manager:"Mike Dvorchak" },
+    { code:"BILG", name:"Purdy Terrible", manager:"Christian Bilger" },
+    { code:"BROW", name:"Swift Boated by Kelce", manager:"Chuck Brownfield" },
+  ];
+
+  // ---- team personalities, derived from real 2024+2025 ESPN draft-recap prices ----
+  // (18 of 20 team-year keeper picks excluded using the actual league keeper
+  // announcements, not a guess; see analyze5.js / analyze4.js in the project notes).
+  // posAffinity: this team's historical share-of-own-budget at a position, divided by
+  //   the league-wide share-of-budget at that position (1.0 = spends like the league
+  //   average; clamped to 0.5-1.8 since IDP/K/DST samples are thin and noisy).
+  // aggression: average percentile (within-position, across both years) of the prices
+  //   this team actually paid — >1 tends to win bidding wars near the top of the market,
+  //   <1 tends to land players cheaper than the field.
+  // starHunter: fraction of this team's total 2-year spend that went to their single
+  //   priciest pick — higher means more "spend big on 1-2 studs," lower means more
+  //   evenly distributed ("balanced").
+  const TEAM_PERSONALITIES = {"SRID":{"posAffinity":{"QB":1.02,"RB":1.51,"WR":0.61,"TE":0.5,"K":0.79,"DL":0.5,"LB":0.9,"DB":0.64,"DST":0.95},"aggression":0.99,"starHunter":0.122},"IS":{"posAffinity":{"QB":1.09,"RB":0.52,"WR":1.46,"TE":0.73,"K":0.79,"DL":0.5,"LB":1.71,"DB":0.64,"DST":0.96},"aggression":1,"starHunter":0.116},"CYD":{"posAffinity":{"QB":1.7,"RB":0.5,"WR":1.27,"TE":0.68,"K":0.86,"DL":0.5,"LB":1.8,"DB":0.69,"DST":1.39},"aggression":1,"starHunter":0.116},"SPIR":{"posAffinity":{"QB":1.27,"RB":0.76,"WR":1.16,"TE":0.54,"K":1.21,"DL":0.84,"LB":0.71,"DB":1.62,"DST":1.62},"aggression":1,"starHunter":0.123},"Razi":{"posAffinity":{"QB":0.5,"RB":1.76,"WR":0.79,"TE":0.5,"K":0.78,"DL":0.61,"LB":0.5,"DB":0.63,"DST":0.63},"aggression":0.97,"starHunter":0.112},"NUTZ":{"posAffinity":{"QB":1.24,"RB":1.05,"WR":0.88,"TE":0.8,"K":0.83,"DL":1.8,"LB":0.5,"DB":0.67,"DST":0.67},"aggression":0.98,"starHunter":0.117},"TB12":{"posAffinity":{"QB":0.55,"RB":1.16,"WR":1.14,"TE":0.63,"K":0.76,"DL":1.8,"LB":0.5,"DB":0.61,"DST":0.61},"aggression":0.99,"starHunter":0.11},"FF":{"posAffinity":{"QB":0.71,"RB":1,"WR":0.83,"TE":1.8,"K":1.65,"DL":0.86,"LB":1.35,"DB":1.8,"DST":0.67},"aggression":1.02,"starHunter":0.131},"BILG":{"posAffinity":{"QB":0.84,"RB":1.17,"WR":0.85,"TE":1.63,"K":0.78,"DL":0.5,"LB":0.69,"DB":0.63,"DST":0.95},"aggression":1,"starHunter":0.112},"BROW":{"posAffinity":{"QB":1.41,"RB":0.6,"WR":1.03,"TE":1.68,"K":1.58,"DL":1.64,"LB":1.49,"DB":1.59,"DST":1.59},"aggression":1.04,"starHunter":0.12}};
+  const LEAGUE_AVG_STAR_HUNTER = 0.118;
+  const DEFAULT_PERSONALITY = { posAffinity:{}, aggression:1, starHunter:LEAGUE_AVG_STAR_HUNTER };
+  function personalityFor(team){ return TEAM_PERSONALITIES[team.code] || DEFAULT_PERSONALITY; }
+
+  // player pool: keep full pool for reference/search, but position-rank used for scarcity notes
+  const PLAYERS = PLAYERS_RAW.map(p => ({...p, drafted:false}));
+  const byId = new Map(PLAYERS.map(p => [p.id, p]));
+  // position-rank within own position (used for scarcity + demand cutoffs)
+  const posGroups = {};
+  PLAYERS.forEach(p => { (posGroups[p.pos] = posGroups[p.pos] || []).push(p); });
+  Object.values(posGroups).forEach(arr => { arr.sort((a,b)=>b.value-a.value); arr.forEach((p,i)=>p.posRank=i+1); });
+  const DEMAND = {QB:20,RB:46,WR:46,TE:18,K:10,DL:17,LB:17,DB:20,DST:10};
+
+  // Expected fraction of total draft $ each position should command over the
+  // whole draft, based on the startable-tier pool -- used to gauge whether a
+  // position is running "hot" or "cold" relative to plan as picks come in.
+  const posBudgetShare = (() => {
+    const pool = PLAYERS.filter(p => p.rank <= ROSTERABLE_CAP);
+    const totalV = pool.reduce((s,p)=>s+p.value,0) || 1;
+    const share = {};
+    pool.forEach(p => { share[p.pos] = (share[p.pos]||0) + p.value; });
+    Object.keys(share).forEach(pos => { share[pos] = share[pos] / totalV; });
+    return share;
+  })();
+
+  // ---- state ----
+  let teams = TEAMS.map(t => ({...t, roster: Object.fromEntries(SLOT_ORDER.map(s=>[s,null]))}));
+  let log = []; // {id, playerId, teamCode, slot, price}
+  let onClockIdx = 0;
+  let nextId = 1;
+  let myTeamCode = TEAMS[0].code;
+  let selectedPlayerId = null;
+  let csSortKey = "rank", csSortDir = 1;
+  let csFilterPos = "ALL";
+  let csHideDrafted = false;
+  let logSortMode = "recent"; // "recent" | "bargain" | "overpay"
+  let mockMode = false;
+  let mockSnapshot = null;
+  let lastMockPick = null; // { player, price, winnerTeam, trail, pickNum } -- drives the ESPN-style auction stage
+
+  const $ = id => document.getElementById(id);
+  function findTeam(code){ return teams.find(t=>t.code===code); }
+
+  // ---- roster / budget helpers ----
+  function spent(team){ return SLOT_ORDER.reduce((s,slot)=> s + (team.roster[slot] ? team.roster[slot].price : 0), 0); }
+  function filledCount(team){ return SLOT_ORDER.reduce((n,slot)=> n + (team.roster[slot]?1:0), 0); }
+  function openSlots(team){ return TOTAL_SLOTS - filledCount(team); }
+  function remaining(team){ return BUDGET - spent(team); }
+  function maxBid(team){ const o=openSlots(team); if(o<=0) return 0; return remaining(team) - (o-1); }
+
+  function suggestSlot(team, pos){
+    for (const s of DEDICATED_SLOTS) if (SLOT_ELIGIBILITY[s].includes(pos) && !team.roster[s]) return s;
+    for (const s of ["FLEX1","FLEX2","FLEX3"]) if (SLOT_ELIGIBILITY[s].includes(pos) && !team.roster[s]) return s;
+    if (SLOT_ELIGIBILITY.OP.includes(pos) && !team.roster.OP) return "OP";
+    for (const s of ["DP1","DP2"]) if (SLOT_ELIGIBILITY[s].includes(pos) && !team.roster[s]) return s;
+    for (const b of ["BENCH1","BENCH2","BENCH3","BENCH4","BENCH5","BENCH6"]) if (!team.roster[b]) return b;
+    return null;
+  }
+  function slotDisplayLabel(s){
+    if (s.startsWith("BENCH")) return "BN"+s.slice(5);
+    if (s.startsWith("FLEX")) return "FLEX "+s.slice(4);
+    if (s.startsWith("DP")) return "DP "+s.slice(2);
+    return s;
+  }
+
+  // ---- source-disagreement (volatility) flag ----
+  // With base $ blended from up to 4 numeric live/market sources (Yahoo,
+  // ESPN live, Draft Sharks market, Draft Sharks auction), some players have
+  // sources that agree closely and others where they're all over the map --
+  // that spread is itself useful info about how much to trust the number.
+  function sourceValues(p){
+    return [p.yahooAvg, p.espnLiveSalary, p.dsMarket, p.dsAuction].filter(v => v !== undefined && v !== null && v > 0);
+  }
+  function sourceVolatility(p){
+    const vals = sourceValues(p);
+    if (vals.length < 2) return null;
+    const mean = vals.reduce((s,v)=>s+v,0) / vals.length;
+    if (mean <= 0) return null;
+    const variance = vals.reduce((s,v)=>s+(v-mean)*(v-mean),0) / vals.length;
+    const cv = Math.sqrt(variance) / mean;
+    return cv;
+  }
+  function isVolatile(p){
+    const cv = sourceVolatility(p);
+    return cv !== null && cv > 0.35;
+  }
+
+  // ---- inflation engine ----
+  function totalRemainingSlots(){ return teams.reduce((s,t)=>s+openSlots(t),0); }
+  function totalRemainingBudget(){ return teams.reduce((s,t)=>s+remaining(t),0); }
+  function remainingRosterablePlayers(){ return PLAYERS.filter(p => !p.drafted && p.rank <= ROSTERABLE_CAP); }
+  function inflationMultiplier(){
+    const slotsLeft = totalRemainingSlots();
+    const moneyLeft = totalRemainingBudget();
+    const remPlayers = remainingRosterablePlayers();
+    const baseValueLeft = remPlayers.reduce((s,p)=>s+p.value,0);
+    const numerator = moneyLeft - slotsLeft * 1;
+    const denominator = baseValueLeft - Math.min(remPlayers.length, slotsLeft) * 1;
+    if (denominator <= 0 || slotsLeft <= 0) return 1;
+    const mult = numerator / denominator;
+    return Math.max(0.4, Math.min(3, mult));
+  }
+  function adjustedValue(player, mult){
+    mult = mult !== undefined ? mult : inflationMultiplier();
+    return Math.max(1, Math.round(1 + (player.value - 1) * mult));
+  }
+
+  // ---- render: stat tiles ----
+  function renderStatTiles(){
+    const totalSpent = teams.reduce((s,t)=>s+spent(t),0);
+    const totalRemain = teams.length*BUDGET - totalSpent;
+    const drafted = log.length;
+    const mult = inflationMultiplier();
+    const multClass = mult > 1.08 ? "bad" : (mult < 0.93 ? "good" : "");
+    const multLabel = mult > 1.08 ? "Prices running hot" : (mult < 0.93 ? "Prices running cold" : "Near market");
+    $("statTiles").innerHTML = `
+      <div class="tile"><div class="tile-label">Players Drafted</div><div class="tile-value">${drafted} / ${TEAMS.length*TOTAL_SLOTS}</div></div>
+      <div class="tile"><div class="tile-label">Total Spent</div><div class="tile-value">$${totalSpent}</div></div>
+      <div class="tile"><div class="tile-label">League $ Remaining</div><div class="tile-value">$${totalRemain}</div></div>
+      <div class="tile"><div class="tile-label">Inflation</div><div class="tile-value ${multClass}">${mult.toFixed(2)}x</div></div>
+      <div class="tile"><div class="tile-label">Market Read</div><div class="tile-value ${multClass}" style="font-size:14px;">${multLabel}</div></div>
+    `;
+  }
+
+  function renderClockBanner(){
+    const t = teams[onClockIdx];
+    $("onClockName").textContent = `${t.code} — ${t.name} (${t.manager})`;
+  }
+
+  // ---- autocomplete ----
+  function acSearch(query){
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return PLAYERS.filter(p => !p.drafted && p.name.toLowerCase().includes(q))
+      .sort((a,b)=>a.rank-b.rank).slice(0,8);
+  }
+  function renderAcList(items){
+    const list = $("acList");
+    if (!items.length) { list.classList.remove("show"); list.innerHTML=""; return; }
+    list.innerHTML = items.map(p => `<div class="autocomplete-item" data-id="${p.id}">
+        <span class="ac-name">${p.name}</span>
+        <span class="ac-meta">${p.pos} ${p.team} &middot; $${p.value}</span>
+      </div>`).join("");
+    list.classList.add("show");
+  }
+  $("playerSearch").addEventListener("input", e => renderAcList(acSearch(e.target.value)));
+  $("playerSearch").addEventListener("focus", e => renderAcList(acSearch(e.target.value)));
+  document.addEventListener("click", e => {
+    if (!e.target.closest(".form-row")) $("acList").classList.remove("show");
+  });
+  $("acList").addEventListener("click", e => {
+    const item = e.target.closest(".autocomplete-item");
+    if (!item) return;
+    selectPlayer(parseInt(item.dataset.id,10));
+    $("acList").classList.remove("show");
+  });
+
+  function selectPlayer(id){
+    selectedPlayerId = id;
+    const p = byId.get(id);
+    $("playerSearch").value = p.name;
+    renderSelectedPlayerCard();
+    renderRecommendation();
+    populateSlotSelectFromPlayer();
+  }
+
+  function renderSelectedPlayerCard(){
+    const card = $("selectedPlayerCard");
+    if (!selectedPlayerId) { card.innerHTML = ""; return; }
+    const p = byId.get(selectedPlayerId);
+    const mult = inflationMultiplier();
+    const adj = adjustedValue(p, mult);
+    const demand = DEMAND[p.pos] || 12;
+    const remainingAtPos = posGroups[p.pos].filter(x => !x.drafted && x.posRank <= demand).length;
+    let scarcity = "";
+    if (remainingAtPos <= Math.max(3, Math.round(demand*0.15))) {
+      scarcity = `<div class="scarcity-note">⚠ Only ${remainingAtPos} startable-tier ${p.pos}s left league-wide — scarcity may justify a premium.</div>`;
+    }
+    const srcBits = [];
+    if (p.yahooAvg !== undefined && p.yahooAvg !== null) srcBits.push(`Yahoo live avg $${p.yahooAvg}`);
+    if (p.espnLiveSalary !== undefined && p.espnLiveSalary !== null) srcBits.push(`ESPN live avg $${p.espnLiveSalary}`);
+    if (p.dsMarket !== undefined && p.dsMarket !== null) srcBits.push(`Draft Sharks market $${p.dsMarket}`);
+    if (p.dsAuction !== undefined && p.dsAuction !== null) srcBits.push(`Draft Sharks auction $${p.dsAuction}`);
+    const volatileNote = isVolatile(p) ? `<div class="scarcity-note">⚡ Sources disagree a lot on this one (${sourceValues(p).map(v=>'$'+v).join(" vs ")}) — treat the base $ as a rough guess, not a tight number.</div>` : "";
+    const srcLine = srcBits.length ? `<div class="hint" style="font-size:11px; color:var(--text-dim); margin-top:4px;">${srcBits.join(" &middot; ")}</div>` : "";
+    const statusLine = p.status ? ` <span style="color:var(--warn); font-weight:700;">[${p.status}]</span>` : "";
+    card.innerHTML = `
+      <div class="selected-player-card">
+        <div class="spname">${p.name}${statusLine} ${p.drafted ? '<span class="status-chip status-drafted">DRAFTED</span>' : ''}</div>
+        <div class="spmeta">${p.pos} &middot; ${p.team} &middot; Bye ${p.bye} &middot; Overall Rank #${p.rank}</div>
+        <div class="sp-values">
+          <div class="v">Base value<b>$${p.value}</b></div>
+          <div class="v">Live market (${mult.toFixed(2)}x)<b>$${adj}</b></div>
+        </div>
+        ${srcLine}
+        ${scarcity}
+        ${volatileNote}
+      </div>`;
+  }
+
+  function renderRecommendation(){
+    const el = $("recBanner");
+    if (!selectedPlayerId) { el.innerHTML=""; return; }
+    const p = byId.get(selectedPlayerId);
+    const bidVal = parseInt($("currentBid").value, 10);
+    if (!Number.isFinite(bidVal) || bidVal < 0) { el.innerHTML=""; return; }
+    const mult = inflationMultiplier();
+    const target = adjustedValue(p, mult);
+    const myTeam = findTeam(myTeamCode);
+    const myMax = myTeam ? maxBid(myTeam) : 0;
+    const nextBid = bidVal + 1;
+    const pctDiff = ((bidVal - target) / target) * 100;
+    const isQB = p.pos === "QB";
+    const isElite = isQB && p.posRank <= 6;
+    const cap = positionCaps[p.pos];
+
+    let cls, headline, detail;
+    if (cap !== undefined && nextBid > cap) {
+      cls = "rec-pass";
+      headline = `PASS — over your personal ${p.pos} cap of $${cap}`;
+      detail = `You've chosen to cap ${p.pos} spending at $${cap}. Live target price is $${target}, but real draft history says this league rarely pays past that for ${p.pos} anyway — let someone else win this one.`;
+    } else if (myTeam && nextBid > myMax) {
+      cls = "rec-pass";
+      headline = `PASS — exceeds your max bid`;
+      detail = `Your max bid right now is $${Math.max(myMax,0)} (reserving $1 for every other open slot). Bidding $${nextBid} would break your budget.`;
+    } else if (bidVal <= target * (isQB ? 0.80 : 0.85)) {
+      cls = "rec-bid";
+      headline = `BID — ${Math.abs(pctDiff).toFixed(0)}% below market value`;
+      detail = isElite
+        ? `Live target price is $${target}. This is a top-6 Superflex QB — these often clear well above sheet value; keep pushing.`
+        : `Live target price is $${target}. Room to keep bidding.`;
+    } else if (bidVal <= target * (isElite ? 1.35 : (isQB ? 1.15 : 1.05))) {
+      cls = "rec-fair";
+      headline = isElite ? `FAIR — elite-QB Superflex premium expected` : `FAIR — at market value ($${target})`;
+      detail = isElite
+        ? `Target price is $${target}, but you said not to get outbid on QB again — paying up to ~35% over sheet value for a top-6 QB is normal in this league's Superflex market. Don't let this number alone scare you off.`
+        : `Bid only if you want/need this player; you're not getting a discount here.`;
+    } else {
+      cls = "rec-pass";
+      headline = `CAUTION — ${pctDiff.toFixed(0)}% over market value`;
+      detail = isQB
+        ? `Live target price is $${target}. Even accounting for Superflex premium, this is getting rich — still fine if it's a QB1/2 tier guy you need.`
+        : `Live target price is $${target}. Only chase this if scarcity or team need justifies the premium.`;
+    }
+    el.innerHTML = `<div class="rec-banner ${cls}">${headline}<span class="rec-detail">${detail}</span></div>`;
+  }
+  $("currentBid").addEventListener("input", renderRecommendation);
+
+  // ---- strategy panel (personal position caps) ----
+  function initStrategyPanel(){
+    $("capDL").value = positionCaps.DL;
+    $("capLB").value = positionCaps.LB;
+    $("capDB").value = positionCaps.DB;
+    $("capDST").value = positionCaps.DST;
+    ["DL","LB","DB","DST"].forEach(pos => {
+      $("cap"+pos).addEventListener("input", e => {
+        const v = parseInt(e.target.value, 10);
+        positionCaps[pos] = Number.isFinite(v) ? v : undefined;
+        renderRecommendation();
+        renderCheatsheet();
+        cloudSave();
+      });
+    });
+  }
+
+  // ---- cloud sync (Firebase Firestore, free Spark plan) ----
+  // Mirrors the same state shape as export/import (see exportData/importData
+  // below) so a save/load round-trip is identical whether it goes through a
+  // downloaded JSON file or the cloud document. Fails soft everywhere: any
+  // network/config problem just leaves the app running fully local, same as
+  // before cloud sync existed.
+  let db = null, cloudDocRef = null, cloudEnabled = false, suppressEcho = false, cloudStatusEl = null;
+  function setCloudStatus(text, cls){
+    if (!cloudStatusEl) cloudStatusEl = $("cloudStatus");
+    if (!cloudStatusEl) return;
+    cloudStatusEl.textContent = text;
+    cloudStatusEl.className = "cloud-status " + (cls || "");
+  }
+  function snapshotState(){
+    return {
+      savedAt: new Date().toISOString(), onClockIdx, nextId, myTeamCode, positionCaps,
+      teams: teams.map(t => ({code:t.code, roster:t.roster})),
+      log,
+    };
+  }
+  function applyCloudState(data){
+    if (!data || !data.teams || !data.log) return;
+    PLAYERS.forEach(p => p.drafted = false);
+    data.teams.forEach(saved => { const t = findTeam(saved.code); if (t) t.roster = saved.roster; });
+    log = data.log;
+    log.forEach(entry => { const p = byId.get(entry.playerId); if (p) p.drafted = true; });
+    onClockIdx = data.onClockIdx || 0;
+    nextId = data.nextId || (log.reduce((m,e)=>Math.max(m,e.id),0)+1);
+    myTeamCode = data.myTeamCode || myTeamCode;
+    if (data.positionCaps) { positionCaps = data.positionCaps; initStrategyPanel(); }
+  }
+  function cloudSave(){
+    if (mockMode) return; // never let mock-draft rehearsal picks touch the real cloud state
+    if (!cloudEnabled || !cloudDocRef) return;
+    suppressEcho = true;
+    cloudDocRef.set(snapshotState())
+      .then(() => setCloudStatus("☁ Synced " + new Date().toLocaleTimeString(), "ok"))
+      .catch(err => { setCloudStatus("⚠ Sync failed — still saved locally, try Export as backup", "err"); console.error("cloud save failed", err); })
+      .finally(() => { setTimeout(() => { suppressEcho = false; }, 400); });
+  }
+  function initFirebase(){
+    if (!FIREBASE_CONFIG) { setCloudStatus("○ Cloud sync not configured — working locally", "warn"); return; }
+    if (typeof firebase === "undefined") { setCloudStatus("⚠ Cloud sync script didn't load (offline?) — working locally", "warn"); return; }
+    try {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.firestore();
+      cloudDocRef = db.collection("drafts").doc(FIREBASE_ROOM_ID);
+      cloudEnabled = true;
+      setCloudStatus("☁ Connecting…", "warn");
+      cloudDocRef.get().then(doc => {
+        if (doc.exists) {
+          applyCloudState(doc.data());
+          renderAll();
+          setCloudStatus("☁ Loaded saved draft from the cloud", "ok");
+        } else {
+          setCloudStatus("☁ Connected — no saved draft in the cloud yet", "ok");
+        }
+        cloudDocRef.onSnapshot(snap => {
+          if (suppressEcho) return;
+          const data = snap.data();
+          if (!data) return;
+          applyCloudState(data);
+          renderAll();
+          setCloudStatus("☁ Synced (updated from another device)", "ok");
+        }, err => { setCloudStatus("⚠ Live sync interrupted — working locally", "err"); console.error("snapshot listener error", err); });
+      }).catch(err => {
+        setCloudStatus("⚠ Could not reach the cloud database — working locally", "err");
+        console.error("cloud load failed", err);
+      });
+    } catch (err) {
+      setCloudStatus("⚠ Cloud sync failed to start — working locally", "err");
+      console.error("firebase init failed", err);
+    }
+  }
+
+  // ---- log-pick form ----
+  const teamSelect = $("winningTeam");
+  const slotSelect = $("slotOverride");
+  function populateTeamSelect(){
+    teamSelect.innerHTML = teams.map(t=>`<option value="${t.code}">${t.code} — ${t.name}</option>`).join("");
+    teamSelect.value = myTeamCode;
+  }
+  function populateSlotSelectFromPlayer(){
+    const team = findTeam(teamSelect.value);
+    if (!team || !selectedPlayerId) { slotSelect.innerHTML=""; return; }
+    const pos = byId.get(selectedPlayerId).pos;
+    const suggested = suggestSlot(team, pos);
+    slotSelect.innerHTML = SLOT_ORDER.map(s => {
+      const filled = team.roster[s];
+      const eligible = SLOT_ELIGIBILITY[s].includes(pos);
+      const disabled = filled ? "disabled" : "";
+      const tag = filled ? ` (filled: ${filled.name})` : (eligible ? "" : " (not eligible)");
+      const sel = s === suggested ? "selected" : "";
+      return `<option value="${s}" ${disabled} ${sel}>${slotDisplayLabel(s)}${tag}</option>`;
+    }).join("");
+    $("slotSuggestion").textContent = suggested ? `Suggested: ${slotDisplayLabel(suggested)}` : "No open eligible slot for this position.";
+  }
+  teamSelect.addEventListener("change", () => { populateSlotSelectFromPlayer(); renderRecommendation(); });
+
+  function logPick(){
+    const errEl = $("formError"); errEl.textContent = "";
+    if (!selectedPlayerId) { errEl.textContent = "Search and select a player first."; return; }
+    const p = byId.get(selectedPlayerId);
+    if (p.drafted) { errEl.textContent = "This player is already drafted."; return; }
+    const teamCode = teamSelect.value;
+    const team = findTeam(teamCode);
+    const price = parseInt($("winPrice").value, 10);
+    const slot = slotSelect.value;
+    if (!Number.isFinite(price) || price < 1) { errEl.textContent = "Enter a valid final price ($1+)."; return; }
+    if (!team) { errEl.textContent = "Select a team."; return; }
+    if (!slot || team.roster[slot]) { errEl.textContent = "Select an open roster slot."; return; }
+    if (!SLOT_ELIGIBILITY[slot].includes(p.pos)) { errEl.textContent = `${p.pos} is not eligible for that slot.`; return; }
+    const mb = maxBid(team);
+    if (price > mb) { errEl.textContent = `Price exceeds ${team.code}'s max bid of $${Math.max(mb,0)} (must reserve $1 per remaining open slot).`; return; }
+    if (price > remaining(team)) { errEl.textContent = `Price exceeds ${team.code}'s remaining budget of $${remaining(team)}.`; return; }
+
+    team.roster[slot] = { playerId: p.id, name: p.name, price };
+    p.drafted = true;
+    const entry = { id: nextId++, playerId: p.id, teamCode, slot, price };
+    log.push(entry);
+
+    $("playerSearch").value = ""; $("winPrice").value = ""; $("currentBid").value = "";
+    selectedPlayerId = null;
+    onClockIdx = (onClockIdx + 1) % teams.length;
+    renderAll();
+    cloudSave();
+  }
+  function undoLast(){
+    if (!log.length) return;
+    const entry = log.pop();
+    const team = findTeam(entry.teamCode);
+    if (team) team.roster[entry.slot] = null;
+    const p = byId.get(entry.playerId);
+    if (p) p.drafted = false;
+    renderAll();
+    cloudSave();
+  }
+  function deletePick(id){
+    const idx = log.findIndex(e=>e.id===id);
+    if (idx===-1) return;
+    const entry = log[idx];
+    const team = findTeam(entry.teamCode);
+    if (team) team.roster[entry.slot] = null;
+    const p = byId.get(entry.playerId);
+    if (p) p.drafted = false;
+    log.splice(idx,1);
+    renderAll();
+    cloudSave();
+  }
+
+  // ---- cheatsheet table ----
+  function renderCheatsheet(){
+    const q = $("csSearch").value.trim().toLowerCase();
+    const mult = inflationMultiplier();
+    let rows = PLAYERS.filter(p => {
+      if (csFilterPos !== "ALL" && p.pos !== csFilterPos) return false;
+      if (csHideDrafted && p.drafted) return false;
+      if (q && !p.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    rows.forEach(p => p._adj = adjustedValue(p, mult));
+    rows.sort((a,b) => {
+      let av,bv;
+      if (csSortKey==="name"){ av=a.name; bv=b.name; return csSortDir*av.localeCompare(bv); }
+      if (csSortKey==="pos"){ av=a.pos; bv=b.pos; return csSortDir*av.localeCompare(bv); }
+      if (csSortKey==="value"){ av=a.value; bv=b.value; }
+      else if (csSortKey==="adj"){ av=a._adj; bv=b._adj; }
+      else if (csSortKey==="ffRank"){ av=a.ffRank ?? 9999; bv=b.ffRank ?? 9999; }
+      else { av=a.rank; bv=b.rank; }
+      return csSortDir*(av-bv);
+    });
+    $("csCount").textContent = `${rows.length} shown / ${PLAYERS.length} total`;
+    $("csBody").innerHTML = rows.map(p => {
+      const diff = p._adj - p.value;
+      const diffCls = diff > 0 ? "diff-pos" : (diff < 0 ? "diff-neg" : "");
+      let statusHtml, actionHtml;
+      if (p.drafted) {
+        const entry = log.find(e=>e.playerId===p.id);
+        statusHtml = `<span class="status-chip status-drafted">${entry ? entry.teamCode+' $'+entry.price : 'DRAFTED'}</span>`;
+        actionHtml = "";
+      } else {
+        statusHtml = `<span class="status-chip status-avail">AVAILABLE</span>`;
+        actionHtml = `<button class="mini-btn" data-nominate="${p.id}">Nominate</button>`;
+      }
+      const cap = positionCaps[p.pos];
+      const capNote = (cap !== undefined && p._adj > cap) ? ` <span title="Your personal cap for ${p.pos} is $${cap}">🔒$${cap}</span>` : "";
+      let ffCell = "–";
+      if (p.ffRank !== undefined) {
+        const posDiff = p.posRank - p.ffRank; // positive = Fantasy Footballers rank them higher than our $ model does
+        let badge = "";
+        if (posDiff >= 8) badge = ` <span class="diff-neg" title="Fantasy Footballers rank them ${posDiff} spots better within ${p.pos} than our value model — possible buy-low signal">▲${posDiff}</span>`;
+        else if (posDiff <= -8) badge = ` <span class="diff-pos" title="Fantasy Footballers rank them ${Math.abs(posDiff)} spots worse within ${p.pos} than our value model — possible overvalued signal">▼${Math.abs(posDiff)}</span>`;
+        ffCell = `${p.pos}${p.ffRank}${badge}`;
+      }
+      const srcBits = [];
+      if (p.yahooAvg !== undefined && p.yahooAvg !== null) srcBits.push(`Yahoo live avg $${p.yahooAvg}`);
+      if (p.espnLiveSalary !== undefined && p.espnLiveSalary !== null) srcBits.push(`ESPN live avg $${p.espnLiveSalary}`);
+      if (p.dsMarket !== undefined && p.dsMarket !== null) srcBits.push(`Draft Sharks market $${p.dsMarket}`);
+      if (p.dsAuction !== undefined && p.dsAuction !== null) srcBits.push(`Draft Sharks auction $${p.dsAuction}`);
+      let srcTitle = srcBits.length ? `Blended from: ${srcBits.join(", ")}, plus the ESPN static kit` : "ESPN static kit / IDP model (no live market data available for this player)";
+      const volatile = isVolatile(p);
+      if (volatile) srcTitle += ` — ⚡ sources disagree a lot here (${sourceValues(p).map(v=>'$'+v).join(" vs ")}), treat as a rough guess`;
+      const statusBadge = p.status ? ` <span title="Injury/roster designator" style="color:var(--warn); font-weight:700;">${p.status}</span>` : "";
+      return `<tr class="${p.drafted ? 'drafted':''}">
+        <td>${p.rank}</td><td>${p.name}${statusBadge}</td><td>${p.pos}</td><td>${p.team}</td><td>${p.bye}</td>
+        <td title="${srcTitle}">$${p.value}${volatile?' ⚡':''}</td><td class="${diffCls}">$${p._adj}${capNote}</td><td>${ffCell}</td><td>${statusHtml}</td><td>${actionHtml}</td>
+      </tr>`;
+    }).join("");
+  }
+  $("csSearch").addEventListener("input", renderCheatsheet);
+  $("hideDrafted").addEventListener("change", e => { csHideDrafted = e.target.checked; renderCheatsheet(); });
+  document.querySelectorAll(".pos-chip:not(.logsort-chip)").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".pos-chip:not(.logsort-chip)").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      csFilterPos = btn.dataset.pos;
+      renderCheatsheet();
+    });
+  });
+  document.querySelectorAll("#csTable th[data-sort]").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.sort;
+      if (csSortKey === key) csSortDir *= -1; else { csSortKey = key; csSortDir = 1; }
+      renderCheatsheet();
+    });
+  });
+  $("csBody").addEventListener("click", e => {
+    const btn = e.target.closest("[data-nominate]");
+    if (!btn) return;
+    selectPlayer(parseInt(btn.dataset.nominate,10));
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
+
+  // ---- team cards ----
+  function healthClass(team){
+    const open = openSlots(team);
+    if (open===0) return "health-good";
+    const perSlot = remaining(team)/open;
+    if (perSlot>=12) return "health-good";
+    if (perSlot>=5) return "health-warn";
+    return "health-bad";
+  }
+  function healthLabel(team){
+    const c = healthClass(team);
+    return c==="health-good" ? "Healthy" : (c==="health-warn" ? "Tight" : "Thin");
+  }
+  // Starter (non-bench) slots still open -- the clearest "what does this team
+  // still need" signal, used both for the team-card need chips and for the
+  // nomination helper's demand scoring.
+  const STARTER_SLOTS = DEDICATED_SLOTS.concat(["FLEX1","FLEX2","FLEX3","OP","DP1","DP2"]);
+  function starterNeeds(team){
+    return STARTER_SLOTS.filter(s => !team.roster[s]);
+  }
+  function needsEligiblePos(team, pos){
+    return starterNeeds(team).some(s => SLOT_ELIGIBILITY[s].includes(pos));
+  }
+  // Top-2 remaining-budget teams (still with open slots) -- the teams most
+  // likely to keep bidding hard and drive inflation on whatever's left.
+  function dangerTeamCodes(){
+    return teams.filter(t => openSlots(t) > 0)
+      .slice().sort((a,b) => remaining(b) - remaining(a))
+      .slice(0, 2).map(t => t.code);
+  }
+  function renderTeams(){
+    const danger = new Set(dangerTeamCodes());
+    $("teamsGrid").innerHTML = teams.map((t,i) => {
+      const rows = SLOT_ORDER.map(s => {
+        const r = t.roster[s];
+        return `<tr class="${r?'filled':'empty'}">
+          <td class="slot">${slotDisplayLabel(s)}</td>
+          <td class="player">${r ? r.name : '—'}</td>
+          <td class="price">${r ? '$'+r.price : ''}</td>
+        </tr>`;
+      }).join("");
+      const cls = [i===onClockIdx?"on-clock":"", t.code===myTeamCode?"my-team":""].join(" ");
+      const needs = starterNeeds(t);
+      const needsChips = needs.length
+        ? `<div class="need-badges">${needs.map(s=>`<span class="need-chip">${slotDisplayLabel(s)}</span>`).join("")}</div>`
+        : `<div class="need-badges"><span class="need-chip need-none">Starters filled</span></div>`;
+      const dangerTag = danger.has(t.code) ? `<span class="danger-tag" title="Top remaining budget among teams still buying -- likely to keep bidding hard">💰 Danger</span>` : "";
+      return `<div class="team-card ${cls}">
+        <div class="team-head"><span class="team-code">${t.code}${t.code===myTeamCode?' ★':''}</span>${dangerTag}
+          <span class="health-badge ${healthClass(t)}">${healthLabel(t)}</span></div>
+        <div class="team-name">${t.name}</div>
+        <div class="manager">${t.manager}</div>
+        <div class="budget-row"><span>Spent</span><span class="v">$${spent(t)}</span></div>
+        <div class="budget-row"><span>Remaining</span><span class="v">$${remaining(t)}</span></div>
+        <div class="budget-row"><span>Max bid</span><span class="v">$${Math.max(maxBid(t),0)}</span></div>
+        <div class="budget-row"><span>Open slots</span><span class="v">${openSlots(t)} / ${TOTAL_SLOTS}</span></div>
+        ${needsChips}
+        <table class="roster-table">${rows}</table>
+      </div>`;
+    }).join("");
+  }
+
+  // ---- draft log / value leaderboard ----
+  function renderLog(){
+    const body = $("logBody");
+    if (!log.length) { body.innerHTML=""; $("logEmpty").style.display="block"; }
+    else {
+      $("logEmpty").style.display="none";
+      const withNum = log.map((entry,idx) => ({entry, num: idx+1, surplus: entry.price - byId.get(entry.playerId).value}));
+      let ordered;
+      if (logSortMode === "bargain") ordered = withNum.slice().sort((a,b)=>a.surplus-b.surplus);
+      else if (logSortMode === "overpay") ordered = withNum.slice().sort((a,b)=>b.surplus-a.surplus);
+      else ordered = withNum.slice().reverse();
+      body.innerHTML = ordered.map(({entry,num,surplus}) => {
+        const p = byId.get(entry.playerId);
+        const surplusCls = surplus < 0 ? "good" : (surplus > 0 ? "bad" : "");
+        const surplusText = surplus > 0 ? `+$${surplus}` : (surplus < 0 ? `-$${Math.abs(surplus)}` : "$0");
+        return `<tr><td>${num}</td><td>${p.name}</td><td>${p.pos}</td><td>${entry.teamCode}</td>
+          <td>${slotDisplayLabel(entry.slot)}</td><td>$${entry.price}</td><td>$${p.value}</td>
+          <td class="${surplusCls}" style="font-weight:700;">${surplusText}</td>
+          <td><button class="del-btn" data-id="${entry.id}">Delete</button></td></tr>`;
+      }).join("");
+    }
+    $("logCount").textContent = `${log.length} pick${log.length===1?"":"s"} logged`;
+  }
+  $("logBody").addEventListener("click", e => {
+    if (e.target.classList.contains("del-btn")) deletePick(parseInt(e.target.dataset.id,10));
+  });
+  document.querySelectorAll("[data-logsort]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      logSortMode = btn.dataset.logsort;
+      document.querySelectorAll("[data-logsort]").forEach(b=>b.classList.toggle("active", b===btn));
+      renderLog();
+    });
+  });
+
+  // ---- positional spend pace ----
+  function renderPosPace(){
+    const spentByPos = {};
+    let totalSpent = 0;
+    log.forEach(entry => {
+      const p = byId.get(entry.playerId);
+      spentByPos[p.pos] = (spentByPos[p.pos] || 0) + entry.price;
+      totalSpent += entry.price;
+    });
+    if (totalSpent < 15) {
+      $("posPaceBody").innerHTML = `<div class="hint">Not enough picks logged yet to read pace reliably -- comes online after a handful of picks.</div>`;
+      return;
+    }
+    const positions = Object.keys(posBudgetShare).sort((a,b) => posBudgetShare[b]-posBudgetShare[a]);
+    const chips = positions.map(pos => {
+      const expected = posBudgetShare[pos] * totalSpent;
+      if (expected < 3) return "";
+      const actual = spentByPos[pos] || 0;
+      const deltaPct = ((actual - expected) / expected) * 100;
+      let cls = "";
+      if (deltaPct > 20) cls = "pace-hot"; else if (deltaPct < -20) cls = "pace-cold";
+      const arrow = deltaPct > 5 ? "▲" : (deltaPct < -5 ? "▼" : "•");
+      const sign = deltaPct >= 0 ? "+" : "";
+      return `<span class="need-chip ${cls}" title="Spent $${actual} on ${pos} so far vs. ~$${expected.toFixed(0)} expected at this point in the draft">${pos} ${arrow} ${sign}${deltaPct.toFixed(0)}%</span>`;
+    }).filter(Boolean).join("");
+    $("posPaceBody").innerHTML = `<div class="need-badges">${chips}</div>`;
+  }
+
+  // ---- positional run alert ----
+  function renderRunAlert(){
+    const recent = log.slice(-5);
+    if (recent.length < 3) { $("runAlertBanner").innerHTML = ""; return; }
+    const counts = {};
+    recent.forEach(e => { const p = byId.get(e.playerId); counts[p.pos] = (counts[p.pos]||0) + 1; });
+    const top = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+    if (top && top[1] >= 3) {
+      const [pos, count] = top;
+      $("runAlertBanner").innerHTML = `<div class="rec-banner rec-fair" style="margin-bottom:14px;">⚠ ${pos} run — ${count} of the last ${recent.length} picks were ${pos}<span class="rec-detail">The room may be reacting to scarcity right now; prices for this position are likely inflated if you chase one this instant.</span></div>`;
+    } else {
+      $("runAlertBanner").innerHTML = "";
+    }
+  }
+
+  // ---- budget allocation planner (my team) ----
+  function renderBudgetPlan(){
+    const team = findTeam(myTeamCode);
+    if (!team) { $("budgetPlanBody").innerHTML = ""; return; }
+    const starterOpen = STARTER_SLOTS.filter(s => !team.roster[s]);
+    const benchOpen = SLOT_ORDER.filter(s => s.startsWith("BENCH") && !team.roster[s]);
+    const allOpen = starterOpen.concat(benchOpen);
+    if (!allOpen.length) { $("budgetPlanBody").innerHTML = `<div class="hint">Roster full — nothing left to plan for.</div>`; return; }
+    const rem = remaining(team);
+    function repValue(slot){
+      const elig = SLOT_ELIGIBILITY[slot];
+      const candidates = PLAYERS.filter(p => !p.drafted && elig.includes(p.pos));
+      if (!candidates.length) return 1;
+      return Math.max(1, ...candidates.map(p=>p.value));
+    }
+    const reps = allOpen.map(s => ({ slot: s, rep: repValue(s) }));
+    const reserve = allOpen.length; // $1 floor reserved per open slot, same convention as max-bid
+    const extra = Math.max(0, rem - reserve);
+    const repSum = reps.reduce((s,r)=>s+r.rep, 0) || 1;
+    const rows = reps.map(r => ({ slot: r.slot, suggested: Math.round(1 + extra * (r.rep / repSum)) }));
+    const rowsHtml = rows.map(r => `<div class="budget-row"><span>${slotDisplayLabel(r.slot)}</span><span class="v">$${r.suggested}</span></div>`).join("");
+    $("budgetPlanBody").innerHTML = `
+      <div class="hint" style="margin-bottom:6px;">$${rem} left across ${allOpen.length} open slot${allOpen.length===1?"":"s"} for ${team.code}. Suggested split below, weighted by the best remaining eligible player at each slot right now — recalculates every pick, treat as a planning guide, not a hard rule.</div>
+      ${rowsHtml}
+    `;
+  }
+
+  // ---- nomination helper ----
+  function renderNominationHelper(){
+    const myTeam = findTeam(myTeamCode);
+    if (!myTeam) { $("nominationHelperBody").innerHTML = ""; return; }
+    const others = teams.filter(t => t.code !== myTeamCode && openSlots(t) > 0);
+    const undrafted = PLAYERS.filter(p => !p.drafted).sort((a,b)=>b.value-a.value).slice(0, 60);
+    function otherDemandCount(pos){ return others.filter(t => needsEligiblePos(t, pos)).length; }
+    const myNeeds = new Set(starterNeeds(myTeam).flatMap(s => SLOT_ELIGIBILITY[s]));
+    const drainCandidates = undrafted.filter(p => !myNeeds.has(p.pos) && otherDemandCount(p.pos) >= Math.ceil(others.length*0.55)).slice(0,3);
+    const valueCandidates = undrafted.filter(p => myNeeds.has(p.pos) && otherDemandCount(p.pos) <= Math.ceil(others.length*0.3)).slice(0,3);
+    function listHtml(list, emptyMsg){
+      if (!list.length) return `<div class="hint">${emptyMsg}</div>`;
+      return list.map(p => `<div class="budget-row"><span>${p.name} <span class="hint">(${p.pos})</span></span><span class="v">$${p.value}</span></div>`).join("");
+    }
+    $("nominationHelperBody").innerHTML = `
+      <div class="hint" style="margin-bottom:4px; font-weight:600;">Nominate to drain others <span class="hint" style="font-weight:400;">— you don't need these, most other teams still do</span></div>
+      ${listHtml(drainCandidates, "No clean drain candidates right now.")}
+      <div class="hint" style="margin:10px 0 4px; font-weight:600;">Good value targets <span class="hint" style="font-weight:400;">— you need these, few other teams do, may go cheap</span></div>
+      ${listHtml(valueCandidates, "No obvious cheap targets right now.")}
+    `;
+  }
+
+  // ---- presentation mode (big-font shared-screen view) ----
+  function renderPresentationView(){
+    const t = teams[onClockIdx];
+    $("presClock").textContent = `On the clock: ${t.code} — ${t.name}`;
+    if (selectedPlayerId) {
+      const p = byId.get(selectedPlayerId);
+      $("presPlayer").textContent = p.name;
+      $("presMeta").textContent = `${p.pos} · ${p.team} · Base $${p.value}${p.drafted ? " · DRAFTED" : ""}`;
+      $("presRec").innerHTML = $("recBanner").innerHTML || "";
+    } else {
+      $("presPlayer").textContent = "Waiting for a nomination…";
+      $("presMeta").textContent = "";
+      $("presRec").innerHTML = "";
+    }
+  }
+  $("presentationToggleBtn").addEventListener("click", () => {
+    $("presentationView").classList.add("active");
+    renderPresentationView();
+  });
+  $("presentationExitBtn").addEventListener("click", () => {
+    $("presentationView").classList.remove("active");
+  });
+
+  // ---- mock draft rehearsal mode ----
+  // Reuses the exact same engine as a real draft (teams/log/roster/inflation/
+  // maxBid/adjustedValue/logPick-equivalent state) so it's a genuine stress
+  // test of the tool, not a separate simulation. Enters/exits by snapshotting
+  // and swapping the live `teams`/`log`/`onClockIdx`/`nextId`/PLAYERS.drafted
+  // state, so exiting always restores your real draft-in-progress exactly.
+  function snapshotRealState(){
+    return {
+      teams: teams.map(t => ({ code:t.code, roster: JSON.parse(JSON.stringify(t.roster)) })),
+      log: log.map(e => ({...e})),
+      onClockIdx, nextId, myTeamCode,
+      draftedIds: PLAYERS.filter(p=>p.drafted).map(p=>p.id),
+    };
+  }
+  function enterMockDraft(){
+    mockSnapshot = snapshotRealState();
+    teams = TEAMS.map(t => ({...t, roster: Object.fromEntries(SLOT_ORDER.map(s=>[s,null]))}));
+    log = [];
+    onClockIdx = 0;
+    nextId = 1;
+    lastMockPick = null;
+    mockRosterViewCode = myTeamCode;
+    mockActiveTab = "board";
+    PLAYERS.forEach(p => p.drafted = false);
+    mockMode = true;
+    $("mockBanner").style.display = "block";
+    document.body.classList.add("mock-theme");
+    $("mockDraftToggleBtn").textContent = "🎮 In Mock Draft";
+    setCloudStatus("🎮 Mock draft — cloud sync paused", "warn");
+    populateMockRosterSelect();
+    initMockTabs();
+    renderAll();
+  }
+  function exitMockDraft(){
+    if (!mockSnapshot) return;
+    const byCode = new Map(mockSnapshot.teams.map(t => [t.code, t.roster]));
+    teams.forEach(t => { t.roster = byCode.get(t.code) || t.roster; });
+    log = mockSnapshot.log;
+    onClockIdx = mockSnapshot.onClockIdx;
+    nextId = mockSnapshot.nextId;
+    myTeamCode = mockSnapshot.myTeamCode;
+    const keep = new Set(mockSnapshot.draftedIds);
+    PLAYERS.forEach(p => p.drafted = keep.has(p.id));
+    mockMode = false;
+    mockSnapshot = null;
+    lastMockPick = null;
+    $("mockBanner").style.display = "none";
+    document.body.classList.remove("mock-theme");
+    $("mockDraftToggleBtn").textContent = "🎮 Mock Draft";
+    renderAll();
+    if (cloudEnabled) setCloudStatus("☁ Back to your real draft", "ok");
+  }
+
+  // ---- ESPN-style live auction room widgets (mock draft mode only) ----
+  function renderMockStrip(){
+    const el = $("mockStrip");
+    if (!el) return;
+    el.innerHTML = teams.map((t,i) => {
+      const cls = ["pill", i===onClockIdx?"on-clock":"", t.code===myTeamCode?"my-team":""].join(" ").trim();
+      const rem = remaining(t);
+      const budgetCls = rem <= 15 ? "budget low" : "budget";
+      const isHighBidder = lastMockPick && lastMockPick.trail && lastMockPick.trail.length &&
+        lastMockPick.trail[lastMockPick.trail.length-1].teamCode === t.code && lastMockPick.pickNum === log.length;
+      const highBidTag = isHighBidder ? `<div class="high-bid">$${lastMockPick.price}</div>` : "";
+      return `<div class="${cls}">${highBidTag}
+        <div class="code">${t.code}</div>
+        <div class="${budgetCls}">$${rem}</div>
+        <div class="pslots">${openSlots(t)} open</div>
+      </div>`;
+    }).join("");
+  }
+  function renderMockStage(){
+    const stage = $("mockStage");
+    const progress = $("mockProgress");
+    if (!stage) return;
+    if (!lastMockPick) {
+      stage.innerHTML = `<div class="stage-placeholder">Draft about to start — hit "Simulate Next Pick" to see the first nomination go to auction.</div>`;
+      if (progress) progress.textContent = `Pick 1 of ${teams.length * TOTAL_SLOTS} — ${teams[onClockIdx] ? teams[onClockIdx].code : ""} on the clock`;
+      return;
+    }
+    const { player, price, winnerTeam, trail, pickNum } = lastMockPick;
+    const trailHtml = (trail || []).slice(-10).map(step =>
+      `<span class="step"><b>$${step.price}</b> ${step.teamCode}</span>`
+    ).join("");
+    stage.innerHTML = `
+      <div class="mock-stage-main">
+        <div class="badge-pos">${player.pos}</div>
+        <div class="stage-info">
+          <div class="stage-name">${player.name}</div>
+          <div class="stage-meta">${player.pos} &middot; ${player.team} &middot; Bye ${player.bye} &middot; Base $${player.value}</div>
+        </div>
+        <div class="stage-result">
+          <div class="stage-price">$${price}</div>
+          <div class="stage-winner">to ${winnerTeam.code} &middot; ${winnerTeam.name}</div>
+        </div>
+      </div>
+      <div class="mock-trail">${trailHtml}</div>
+    `;
+    if (progress) {
+      const nextIdx = onClockIdx;
+      progress.textContent = `Pick ${pickNum} of ${teams.length * TOTAL_SLOTS} complete — ${teams[nextIdx] ? teams[nextIdx].code : ""} on the clock next`;
+    }
+  }
+
+  let mockActiveTab = "board"; // "board" | "budgets" -- persisted across re-renders
+  let mockRosterViewCode = null; // which team's roster the left rail shows; defaults to myTeamCode on entry
+
+  function populateMockRosterSelect(){
+    const sel = $("mockRosterTeamSelect");
+    if (!sel) return;
+    sel.innerHTML = teams.map(t => `<option value="${t.code}">${t.code} — ${t.name}</option>`).join("");
+    sel.value = mockRosterViewCode || myTeamCode;
+  }
+  function renderMockRoster(){
+    const table = $("mockRosterTable");
+    const limits = $("mockRosterLimits");
+    if (!table) return;
+    const sel = $("mockRosterTeamSelect");
+    const code = (sel && sel.value) || mockRosterViewCode || myTeamCode;
+    const team = findTeam(code) || teams[0];
+    table.innerHTML = SLOT_ORDER.map(s => {
+      const r = team.roster[s];
+      return `<tr class="${r?'filled':'empty'}">
+        <td class="slot">${slotDisplayLabel(s)}</td>
+        <td class="player">${r ? r.name : '—'}</td>
+        <td class="price">${r ? '$'+r.price : ''}</td>
+      </tr>`;
+    }).join("");
+    const counts = {};
+    DEDICATED_SLOTS.forEach(s => { counts[s] = team.roster[s] ? 1 : 0; });
+    if (limits) {
+      limits.innerHTML = DEDICATED_SLOTS.map(s => `${s} ${counts[s]}/1`).join(" &middot; ") +
+        `<br>Spent $${spent(team)} &middot; Left $${remaining(team)} &middot; Open ${openSlots(team)}/${TOTAL_SLOTS}`;
+    }
+  }
+  function renderMockBoard(){
+    const wrap = $("mockTabBoard");
+    if (!wrap) return;
+    const header = `<tr><th class="slotcell"></th>${teams.map(t=>`<th>${t.code}</th>`).join("")}</tr>`;
+    const rows = SLOT_ORDER.map(slot => {
+      const cells = teams.map(t => {
+        const r = t.roster[slot];
+        const mine = t.code === myTeamCode ? " mine" : "";
+        if (!r) return `<td></td>`;
+        return `<td class="filled${mine}"><span class="bp-name">${r.name}</span><span class="bp-price">$${r.price}</span></td>`;
+      }).join("");
+      return `<tr><td class="slotcell">${slotDisplayLabel(slot)}</td>${cells}</tr>`;
+    }).join("");
+    wrap.innerHTML = `<div class="mock-board-wrap"><table class="mock-board">${header}${rows}</table></div>`;
+  }
+  function renderMockBudgets(){
+    const wrap = $("mockTabBudgets");
+    if (!wrap) return;
+    const rows = teams.slice().sort((a,b)=>remaining(b)-remaining(a)).map(t => `
+      <tr><td>${t.code} &middot; ${t.name}</td><td class="num">$${remaining(t)}</td><td class="num">$${Math.max(maxBid(t),0)}</td></tr>
+    `).join("");
+    wrap.innerHTML = `<table class="mock-budgets-table">
+      <thead><tr><th>Team</th><th style="text-align:right;">Remaining</th><th style="text-align:right;">Max Bid</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+  function renderMockPicksTicker(){
+    const el = $("mockPicksTicker");
+    if (!el) return;
+    if (!log.length) { el.innerHTML = `<div class="mock-picks-empty">No picks yet.</div>`; return; }
+    const recent = log.slice(-25).reverse();
+    el.innerHTML = recent.map(entry => {
+      const p = byId.get(entry.playerId);
+      if (!p) return "";
+      return `<div class="mock-pick-card">
+        <span class="ppos">${p.pos}</span><span class="pname">${p.name}</span>
+        <div class="pmeta"><span>${entry.teamCode} &middot; ${slotDisplayLabel(entry.slot)}</span><span class="pprice">$${entry.price}</span></div>
+      </div>`;
+    }).join("");
+  }
+  function initMockTabs(){
+    const boardBtn = $("mockTabBtnBoard"), budgetsBtn = $("mockTabBtnBudgets");
+    if (!boardBtn || boardBtn.dataset.wired) return;
+    boardBtn.dataset.wired = "1";
+    const setTab = (tab) => {
+      mockActiveTab = tab;
+      boardBtn.classList.toggle("active", tab === "board");
+      budgetsBtn.classList.toggle("active", tab === "budgets");
+      $("mockTabBoard").style.display = tab === "board" ? "" : "none";
+      $("mockTabBudgets").style.display = tab === "budgets" ? "" : "none";
+    };
+    boardBtn.addEventListener("click", () => setTab("board"));
+    budgetsBtn.addEventListener("click", () => setTab("budgets"));
+    $("mockRosterTeamSelect").addEventListener("change", e => { mockRosterViewCode = e.target.value; renderMockRoster(); });
+  }
+
+  // Willingness heuristic: base is the live-adjusted value, bumped up for a
+  // team's actual starter needs, then shaped by that team's real-history
+  // personality — posAffinity (which positions they actually pay up for),
+  // aggression (do they generally win bidding wars or land bargains), and
+  // starHunter (do they blow the budget on studs or spread it evenly) — with
+  // per-team random noise so mock runs don't all play out identically.
+  function mockWillingness(team, player, mult){
+    const base = adjustedValue(player, mult);
+    const needBoost = needsEligiblePos(team, player.pos) ? 1.15 : 0.75;
+    const pers = personalityFor(team);
+    const posAffinity = (pers.posAffinity && pers.posAffinity[player.pos]) || 1.0;
+    const aggression = pers.aggression || 1.0;
+    // elite-tier players (top 5 at their position) get an extra push from
+    // star-hunter teams and a pullback from balanced/patient teams
+    const isElite = player.posRank <= 5;
+    const starBoost = isElite ? 1 + (pers.starHunter - LEAGUE_AVG_STAR_HUNTER) * 4 : 1.0;
+    const noise = 0.88 + Math.random() * 0.24;
+    return Math.max(1, Math.round(base * needBoost * posAffinity * aggression * starBoost * noise));
+  }
+  function mockAutoNominate(team){
+    const needs = starterNeeds(team);
+    const openBench = SLOT_ORDER.filter(s => s.startsWith("BENCH") && !team.roster[s]);
+    const targetSlots = needs.length ? needs : openBench;
+    if (!targetSlots.length) return null;
+    const pers = personalityFor(team);
+    // weight slot choice toward positions this team historically favors,
+    // so nomination order reflects real tendencies rather than pure chance
+    const weights = targetSlots.map(slot => {
+      const elig = SLOT_ELIGIBILITY[slot];
+      const avgAffinity = elig.reduce((s,pos)=>s+((pers.posAffinity&&pers.posAffinity[pos])||1.0),0) / elig.length;
+      return Math.max(0.1, avgAffinity);
+    });
+    const totalW = weights.reduce((s,w)=>s+w,0);
+    let r = Math.random() * totalW;
+    let slot = targetSlots[targetSlots.length-1];
+    for (let i=0; i<targetSlots.length; i++){ r -= weights[i]; if (r <= 0) { slot = targetSlots[i]; break; } }
+    const elig = SLOT_ELIGIBILITY[slot];
+    const pool = PLAYERS.filter(p => !p.drafted && elig.includes(p.pos)).sort((a,b)=>b.value-a.value);
+    if (!pool.length) return null;
+    const topN = pool.slice(0, Math.min(5, pool.length));
+    // star-hunter teams reach for the top of the pool more often; balanced
+    // teams pick more evenly across the top-5 available
+    const starPull = Math.max(0, Math.min(1, (pers.starHunter - 0.09) / 0.06));
+    const idx = Math.random() < starPull ? 0 : Math.floor(Math.random()*topN.length);
+    return topN[idx];
+  }
+  function mockSimulateAuction(player, nominatorCode){
+    const mult = inflationMultiplier();
+    const eligibleTeams = teams.filter(t => openSlots(t) > 0 && maxBid(t) >= 1);
+    if (!eligibleTeams.length) return { winner: nominatorCode, price: 1, trail: [{teamCode:nominatorCode, price:1}] };
+    const willingness = {};
+    eligibleTeams.forEach(t => { willingness[t.code] = mockWillingness(t, player, mult); });
+    let price = 1;
+    let highBidder = nominatorCode;
+    const trail = [{ teamCode: highBidder, price }];
+    while (price < BUDGET) {
+      const nextBidders = eligibleTeams.filter(t =>
+        t.code !== highBidder && willingness[t.code] >= price + 1 && maxBid(t) >= price + 1
+      );
+      if (!nextBidders.length) break;
+      const pick = nextBidders[Math.floor(Math.random()*nextBidders.length)];
+      highBidder = pick.code;
+      price += 1;
+      trail.push({ teamCode: highBidder, price });
+    }
+    return { winner: highBidder, price, trail };
+  }
+  function mockRunOnePick(){
+    // skip teams that are already full
+    let guard = 0;
+    while (openSlots(teams[onClockIdx]) <= 0 && guard < teams.length) { onClockIdx = (onClockIdx+1) % teams.length; guard++; }
+    const nominator = teams[onClockIdx];
+    if (openSlots(nominator) <= 0) return false; // every team full, draft is over
+    const player = mockAutoNominate(nominator);
+    if (!player) { onClockIdx = (onClockIdx+1) % teams.length; return true; }
+    const { winner, price, trail } = mockSimulateAuction(player, nominator.code);
+    const winnerTeam = findTeam(winner);
+    const slot = suggestSlot(winnerTeam, player.pos);
+    if (!slot) { onClockIdx = (onClockIdx+1) % teams.length; return true; }
+    winnerTeam.roster[slot] = { playerId: player.id, name: player.name, price };
+    player.drafted = true;
+    log.push({ id: nextId++, playerId: player.id, teamCode: winnerTeam.code, slot, price });
+    lastMockPick = { player, price, winnerTeam, nominatorCode: nominator.code, trail, pickNum: log.length };
+    onClockIdx = (onClockIdx+1) % teams.length;
+    return true;
+  }
+  function mockRunN(n){
+    for (let i=0; i<n; i++){
+      if (teams.every(t => openSlots(t) <= 0)) break;
+      const kept = mockRunOnePick();
+      if (!kept) break;
+    }
+    renderAll();
+  }
+  $("mockDraftToggleBtn").addEventListener("click", () => {
+    if (mockMode) exitMockDraft(); else enterMockDraft();
+  });
+  $("mockExitBtn").addEventListener("click", exitMockDraft);
+  $("mockStep1").addEventListener("click", () => mockRunN(1));
+  $("mockStep5").addEventListener("click", () => mockRunN(5));
+  $("mockStepRest").addEventListener("click", () => mockRunN(500));
+
+  // ---- export / import ----
+  function exportData(){
+    const data = {
+      exportedAt: new Date().toISOString(), onClockIdx, nextId, myTeamCode, positionCaps,
+      teams: teams.map(t => ({code:t.code, roster:t.roster})),
+      log,
+    };
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url; a.download=`draft-dashboard-export-${Date.now()}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  function importData(file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data.teams || !data.log) throw new Error("Invalid file format.");
+        applyCloudState(data);
+        $("formError").textContent = "";
+        renderAll();
+        cloudSave();
+      } catch (e) {
+        $("formError").textContent = "Import failed: " + e.message;
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ---- wiring ----
+  $("logPickBtn").addEventListener("click", logPick);
+  $("undoBtn").addEventListener("click", undoLast);
+  $("prevClock").addEventListener("click", () => { onClockIdx=(onClockIdx-1+teams.length)%teams.length; renderClockBanner(); renderTeams(); });
+  $("nextClock").addEventListener("click", () => { onClockIdx=(onClockIdx+1)%teams.length; renderClockBanner(); renderTeams(); });
+  $("exportBtn").addEventListener("click", exportData);
+  $("importBtn").addEventListener("click", () => $("importFile").click());
+  $("importFile").addEventListener("change", e => { if (e.target.files[0]) importData(e.target.files[0]); e.target.value=""; });
+  $("themeToggle").addEventListener("click", () => {
+    const dark = document.body.getAttribute("data-theme")==="dark";
+    document.body.setAttribute("data-theme", dark?"light":"dark");
+    $("themeToggle").textContent = dark ? "🌙 Dark mode" : "☀️ Light mode";
+  });
+  $("myTeamSelect").addEventListener("change", e => { myTeamCode = e.target.value; renderAll(); cloudSave(); });
+  $("methodologyToggleBtn").addEventListener("click", () => {
+    const d = $("methodologyPanel"); d.open = !d.open; d.scrollIntoView({behavior:"smooth", block:"center"});
+  });
+
+  function populateMyTeamSelect(){
+    $("myTeamSelect").innerHTML = teams.map(t=>`<option value="${t.code}">My team: ${t.code}</option>`).join("");
+    $("myTeamSelect").value = myTeamCode;
+  }
+
+  function renderAll(){
+    renderStatTiles();
+    renderClockBanner();
+    renderTeams();
+    renderLog();
+    renderCheatsheet();
+    renderPosPace();
+    renderRunAlert();
+    renderBudgetPlan();
+    renderNominationHelper();
+    populateTeamSelect();
+    if (selectedPlayerId) { renderSelectedPlayerCard(); renderRecommendation(); populateSlotSelectFromPlayer(); }
+    renderPresentationView();
+    if (mockMode) {
+      renderMockStrip(); renderMockStage(); renderMockRoster();
+      renderMockBoard(); renderMockBudgets(); renderMockPicksTicker();
+    }
+  }
+
+  populateMyTeamSelect();
+  populateTeamSelect();
+  initStrategyPanel();
+  renderAll();
+  initFirebase();
+})();
+</script>
+</body>
+</html>
